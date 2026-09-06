@@ -68,12 +68,124 @@ LINE_COLORS = {
     "5": "#996CAC", "6": "#CD7C2F", "7": "#747F00", "8": "#E6186C",
 }
 
-DISCLAIMER = "표시된 혼잡도는 실시간 측정값이 아니라 **과거 패턴 기반 기대 혼잡도**입니다."
+DISCLAIMER = "표시된 혼잡도는 실시간 측정값이 아닌 **과거 패턴 기반 기대 혼잡도**입니다."
 
 MODE_LABEL = {"calm": "혼잡 회피", "fast": "빠른 도착",
               "min_transfer": "환승 최소", "balanced": "균형"}
 
 DIRECTION_KO = {"up": "상행", "down": "하행", "inner": "내선", "outer": "외선"}
+DAY_TYPE_KO = {"weekday": "평일", "saturday": "토요일", "sunday": "일요일"}
+
+# ---------------------------------------------------------------------------
+# 전역 스타일. 화이트 베이스 + 네이비 Primary + 골드 Secondary.
+# 노선색은 노선 구분에만 쓰고, 혼잡 위험은 주황/빨강으로 제한한다.
+# ---------------------------------------------------------------------------
+st.markdown(f"""
+<style>
+  .stApp {{ background: {BASE_BG}; }}
+  h1, h2, h3 {{ color: {PRIMARY}; }}
+  .badge {{ display:inline-block; padding:1px 8px; margin-right:4px;
+           border-radius:10px; color:#fff; font-size:0.78rem; font-weight:600; }}
+
+  /* ---------- 사이드바: 네이비 배경 + 골드 포인트 ---------- */
+  section[data-testid="stSidebar"] {{
+      background: linear-gradient(180deg, {PRIMARY} 0%, #001B33 100%);
+      border-right: 3px solid {SECONDARY};
+  }}
+  section[data-testid="stSidebar"] * {{ color: #FFFFFF !important; }}
+  section[data-testid="stSidebar"] h1 {{
+      color: #FFFFFF !important; font-size: 1.6rem; margin-bottom: 0.2rem;
+      border-bottom: 2px solid {SECONDARY}; padding-bottom: 0.5rem;
+  }}
+  section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {{
+      color: #D9DEE5 !important; font-size: 0.86rem; line-height: 1.5;
+  }}
+  section[data-testid="stSidebar"] hr {{ border-color: rgba(141,113,80,0.5); }}
+
+  /* 메뉴 버튼: 골드 바탕 + 흰 글씨.
+     선택자를 .stButton 안쪽으로 한정한다. 그러지 않으면 사이드바 접기 버튼까지
+     골드가 칠해지고, 특이도가 더 높아 개별 예외 규칙이 먹지 않는다. */
+  section[data-testid="stSidebar"] .stButton button {{
+      background-color: {SECONDARY} !important;
+      border: 1px solid {SECONDARY} !important;
+      color: #FFFFFF !important;
+      font-weight: 600; justify-content: flex-start;
+      padding: 0.55rem 0.9rem; margin-bottom: 4px; border-radius: 8px;
+  }}
+  section[data-testid="stSidebar"] .stButton button:hover {{
+      background-color: #A0855F !important; border-color: #A0855F !important;
+  }}
+  /* 선택된 메뉴: 좌우 양쪽에 흰 띠 */
+  section[data-testid="stSidebar"] .stButton button[kind="primary"],
+  section[data-testid="stSidebar"] .stButton button[data-testid="stBaseButton-primary"] {{
+      background-color: #6F573B !important; border-color: #6F573B !important;
+      box-shadow: inset 4px 0 0 0 #FFFFFF, inset -4px 0 0 0 #FFFFFF;
+  }}
+
+  /* 사이드바 접기/펼치기 버튼: 배경 없이 흰 아이콘만 */
+  section[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"] button,
+  section[data-testid="stSidebar"] [data-testid="stSidebarHeader"] button,
+  [data-testid="stSidebarCollapseButton"] button,
+  [data-testid="stSidebarCollapsedControl"] button,
+  [data-testid="collapsedControl"] button,
+  [data-testid="stExpandSidebarButton"] button {{
+      background: none !important;
+      background-color: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      color: #FFFFFF !important;
+  }}
+  section[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"] button:hover,
+  section[data-testid="stSidebar"] [data-testid="stSidebarHeader"] button:hover,
+  [data-testid="stSidebarCollapseButton"] button:hover,
+  [data-testid="stSidebarCollapsedControl"] button:hover,
+  [data-testid="collapsedControl"] button:hover,
+  [data-testid="stExpandSidebarButton"] button:hover {{
+      background: none !important;
+      background-color: transparent !important;
+  }}
+
+  /* 선택한 역의 [출발역/도착역으로 설정] 버튼: 네이비 바탕 + 금색 글씨 */
+  .st-key-btn_set_origin button, .st-key-btn_set_dest button,
+  div[class*="st-key-btn_set_"] button {{
+      background-color: {PRIMARY} !important;
+      border: 1px solid {PRIMARY} !important;
+      color: {SECONDARY} !important;
+      font-weight: 700;
+  }}
+  .st-key-btn_set_origin button:hover, .st-key-btn_set_dest button:hover,
+  div[class*="st-key-btn_set_"] button:hover {{
+      background-color: #013C72 !important; border-color: #013C72 !important;
+      color: {SECONDARY} !important;
+  }}
+  .st-key-btn_set_origin button p, .st-key-btn_set_dest button p,
+  div[class*="st-key-btn_set_"] button p {{ color: {SECONDARY} !important; }}
+
+  /* ---------- 본문 버튼 ---------- */
+  div.stButton > button[kind="primary"] {{
+      background-color: {PRIMARY}; border-color: {PRIMARY};
+  }}
+  div.stButton > button[kind="secondary"] {{
+      border-color: {SECONDARY}; color: {SECONDARY};
+  }}
+
+  /* ---------- 탭 강조를 골드로 (기본 빨강 대체) ---------- */
+  button[data-baseweb="tab"] {{ color: #4B5563; }}
+  button[data-baseweb="tab"][aria-selected="true"] {{
+      color: {SECONDARY} !important; font-weight: 700;
+  }}
+  .stTabs [data-baseweb="tab-highlight"],
+  [data-baseweb="tab-highlight"] {{ background-color: {SECONDARY} !important; }}
+  .stTabs [data-baseweb="tab-border"] {{ background-color: #E5E7EB; }}
+  .stTabs button[role="tab"][aria-selected="true"] {{
+      color: {SECONDARY} !important;
+  }}
+  .stTabs button[role="tab"][aria-selected="true"] p {{
+      color: {SECONDARY} !important; font-weight: 700;
+  }}
+</style>
+""", unsafe_allow_html=True)
+
 
 
 EVENT_TYPE_KO = {
@@ -95,59 +207,27 @@ def ko_event_name(v) -> str:
 
 
 def round1(df: pd.DataFrame) -> pd.DataFrame:
-    """표에 보여줄 실수 컬럼을 소수 첫째 자리까지만 남긴다."""
+    """표에 보여줄 실수 값을 **소수 첫째 자리 문자열**로 확정한다.
+
+    st.table / st.dataframe 은 float 컬럼을 기본 4자리로 렌더링한다(1.5 -> 1.5000).
+    round(1) 만으로는 표시가 바뀌지 않으므로 문자열로 포맷해야 한다.
+    정수형 컬럼과 문자열이 섞인 컬럼은 건드리지 않는다.
+    """
     out = df.copy()
     for c in out.columns:
-        if pd.api.types.is_float_dtype(out[c]):
-            out[c] = out[c].round(1)
+        col = out[c]
+        if pd.api.types.is_bool_dtype(col) or pd.api.types.is_integer_dtype(col):
+            continue
+        num = pd.to_numeric(col, errors="coerce")
+        if num.notna().sum() == 0:
+            continue
+        if num.isna().sum() > col.isna().sum():      # 문자열이 섞인 컬럼
+            continue
+        if (num.dropna() % 1 == 0).all():
+            out[c] = num.map(lambda v: "-" if pd.isna(v) else "{:,.0f}".format(v))
+        else:
+            out[c] = num.map(lambda v: "-" if pd.isna(v) else "{:,.1f}".format(v))
     return out
-DAY_TYPE_KO = {"weekday": "평일", "saturday": "토요일", "sunday": "일요일"}
-
-st.markdown(f"""
-<style>
-  .stApp {{ background: {BASE_BG}; }}
-  h1, h2, h3 {{ color: {PRIMARY}; }}
-  div.stButton > button[kind="primary"] {{
-      background-color: {PRIMARY}; border-color: {PRIMARY}; }}
-  div.stButton > button[kind="secondary"] {{
-      border-color: {SECONDARY}; color: {SECONDARY}; }}
-  .badge {{ display:inline-block; padding:1px 8px; margin-right:4px; border-radius:10px;
-           color:#fff; font-size:0.78rem; font-weight:600; }}
-  .seg {{ padding:6px 10px; border-left:3px solid {PRIMARY}; margin:4px 0;
-          background:{LIGHT}; border-radius:0 6px 6px 0; }}
-
-  /* 사이드바: 네이비 배경 + 골드 포인트 + 흰 글씨 */
-  section[data-testid="stSidebar"] {{
-      background: linear-gradient(180deg, {PRIMARY} 0%, #001B33 100%);
-      border-right: 3px solid {SECONDARY};
-  }}
-  section[data-testid="stSidebar"] * {{ color: #FFFFFF !important; }}
-  section[data-testid="stSidebar"] h1 {{
-      color: #FFFFFF !important; font-size: 1.6rem; margin-bottom: 0.2rem;
-      border-bottom: 2px solid {SECONDARY}; padding-bottom: 0.5rem;
-  }}
-  section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {{
-      color: #D9DEE5 !important; font-size: 0.86rem; line-height: 1.5;
-  }}
-  /* 메뉴 버튼: 골드 바탕 + 흰 글씨 */
-  section[data-testid="stSidebar"] button {{
-      background-color: {SECONDARY} !important;
-      border: 1px solid {SECONDARY} !important;
-      color: #FFFFFF !important;
-      font-weight: 600; justify-content: flex-start;
-      padding: 0.55rem 0.9rem; margin-bottom: 4px; border-radius: 8px;
-  }}
-  section[data-testid="stSidebar"] button:hover {{
-      background-color: #A0855F !important; border-color: #A0855F !important;
-  }}
-  section[data-testid="stSidebar"] button[kind="primary"],
-  section[data-testid="stSidebar"] button[data-testid="stBaseButton-primary"] {{
-      background-color: #6F573B !important; border-color: #6F573B !important;
-      box-shadow: inset 4px 0 0 0 #FFFFFF;
-  }}
-  section[data-testid="stSidebar"] hr {{ border-color: rgba(141,113,80,0.5); }}
-</style>
-""", unsafe_allow_html=True)
 
 
 # --------------------------------------------------------------------------
@@ -268,8 +348,12 @@ CANVAS_W, CANVAS_H = 5120, 2880
 #                      변한다. 화면 픽셀 고정으로 주면 전체보기에서 멀어 보이고
 #                      확대하면 붙어 보이는 문제가 생긴다.
 LABEL_FONT_SCALE = 0.95
-LABEL_GAP_NORMAL = 22      # 일반역 (marker_radius 10)
-LABEL_GAP_TRANSFER = 26    # 환승역 (marker_radius 12, 라벨도 크다)
+#   간격 = 데이터 좌표 몫(확대 시 커짐) + 화면 픽셀 몫(배율 무관 고정).
+#   데이터 몫을 줄이고 고정 몫을 두면 초기 화면 간격은 유지되면서
+#   확대했을 때 지나치게 벌어지지 않는다.
+LABEL_GAP_NORMAL = 3       # 일반역 데이터 몫
+LABEL_GAP_TRANSFER = 4     # 환승역 데이터 몫
+LABEL_GAP_FIXED_PX = 2     # 화면 고정 몫(빈 줄 높이)
 
 # 역명 라벨을 마커 아래로 내리는 거리(캔버스 좌표 단위).
 # 화면 픽셀이 아니라 데이터 좌표라, 축소하면 간격이 좁아지고 확대하면 넓어진다.
@@ -279,6 +363,8 @@ LABEL_DY_MAJOR = 52       # 환승역(마커가 커서 조금 더 띄운다)
 LABEL_SIZE_DELTA = -0.3   # 워크북 label_size_px 대비 축소폭(약 7%)
 # 노선도 표시 범위. 팬/줌이 이 밖으로 나가지 못하게 고정한다.
 X0, X1, Y0, Y1 = 700, 4450, 150, 2750
+# 참고: Plotly 에는 '최대 확대 배율' 을 막는 속성이 없다(minallowed/maxallowed 는
+# 바깥 범위만 제한한다). 확대 깊이 제한은 JS 커스텀 컴포넌트가 필요하다.
 
 
 def path_to_visual_nodes(path, vn: pd.DataFrame):
@@ -364,7 +450,8 @@ def draw_map(bundle: dict, highlight_path=None):
             gap = LABEL_GAP_TRANSFER if float(size) > 10.5 else LABEL_GAP_NORMAL
             fig.add_trace(go.Scatter(
                 x=t["label_x_px"], y=t["label_y_px"] + gap, mode="text",
-                text=["<b>%s</b>" % k for k in t["station_key"]],
+                text=["<span style='font-size:%dpx'><br></span><b>%s</b>"
+                      % (LABEL_GAP_FIXED_PX, k) for k in t["station_key"]],
                 textposition="bottom center",
                 textfont=dict(size=round(float(size) * LABEL_FONT_SCALE, 1),
                               color="#111827"),
@@ -411,6 +498,7 @@ def draw_map(bundle: dict, highlight_path=None):
         plot_bgcolor="#FFFFFF", paper_bgcolor="#FFFFFF",
         # minallowed / maxallowed 로 팬·줌 범위를 초기 화면 밖으로 나가지 못하게 묶는다.
         # (plotly.js 2.24+ 지원. 구버전에서는 무시되며 동작에는 지장 없다)
+        # minallowed/maxallowed 로 초기 화면 밖으로 나가지 못하게 묶는다.
         xaxis=dict(visible=False, range=[X0, X1], fixedrange=False,
                    minallowed=X0, maxallowed=X1),
         yaxis=dict(visible=False, range=[Y1, Y0],   # 이미지 좌표계: y 아래로 증가
@@ -445,6 +533,31 @@ def _reset_all():
         st.session_state[k] = None
 
 
+def congestion_line_chart(piv: pd.DataFrame, height: int = 300):
+    """시간대별 혼잡도 라인차트.
+
+    st.line_chart(Vega-Lite)는 휠 스크롤로 축이 무한히 밀린다.
+    fixedrange 를 건 Plotly 로 대체해 이동/확대를 막는다.
+    """
+    import plotly.graph_objects as go
+    fig = go.Figure()
+    palette = [PRIMARY, SECONDARY, "#2E7D32", "#B23A48"]
+    for i, c in enumerate(piv.columns):
+        fig.add_trace(go.Scatter(x=list(piv.index), y=piv[c], mode="lines",
+                                 name=str(c), line=dict(width=2.4,
+                                                        color=palette[i % len(palette)])))
+    fig.update_layout(
+        height=height, margin=dict(l=8, r=8, t=8, b=8),
+        plot_bgcolor="#FFFFFF", paper_bgcolor="#FFFFFF",
+        legend=dict(orientation="h", yanchor="bottom", y=1.0, x=0),
+        xaxis=dict(fixedrange=True, tickangle=-45, gridcolor="#EEF0F2"),
+        yaxis=dict(fixedrange=True, title="기대 혼잡도(%)", gridcolor="#EEF0F2",
+                   rangemode="tozero"),
+        dragmode=False)
+    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False,
+                                                  "scrollZoom": False})
+
+
 def congestion_tone(v):
     """혼잡 위험 색. 노선색과 섞이지 않게 주황/빨강 계열로만 제한한다."""
     if v is None or (isinstance(v, float) and np.isnan(v)):
@@ -457,8 +570,18 @@ def congestion_tone(v):
 
 
 @st.cache_data(show_spinner=False)
-def transfer_tip(station: str, from_line: str, to_line: str):
-    """환승 동선상 유리한 호차/문. 원본에 없는 조합은 안내하지 않는다."""
+def transfer_tip(station: str, from_line: str, to_line: str,
+                 prev_station: str | None = None, next_station: str | None = None):
+    """환승 동선상 유리한 호차/문.
+
+    같은 환승역이라도 **진행 방향에 따라 위치가 정반대**다.
+    예) 잠실 8→2 : 몽촌토성 방면 하차 6-4 / 석촌 방면 하차 1-1
+
+    그래서 소요시간만 보고 고르면 안 되고, 실제 경로의 앞뒤 역으로 방면을 좁힌다.
+      arrive_toward  : 타고 온 열차가 향하는 방면 = 직전 역이 **아닌** 쪽
+      depart_toward  : 갈아탄 열차가 향하는 방면 = 다음 역과 일치하는 쪽
+    원본에 없는 조합은 추정하지 않는다.
+    """
     tip = load_mart("transfer_tip_mart")
     if tip is None:
         return None
@@ -467,7 +590,21 @@ def transfer_tip(station: str, from_line: str, to_line: str):
               & (tip["to_line"].astype(str) == str(to_line))]
     if sub.empty:
         return None
-    r = sub.sort_values("transfer_time_min").iloc[0]
+
+    matched = sub
+    if next_station:
+        m = matched[matched["depart_toward"].astype(str).str.contains(
+            next_station, regex=False, na=False)]
+        if not m.empty:
+            matched = m
+    if prev_station:
+        m = matched[~matched["arrive_toward"].astype(str).str.contains(
+            prev_station, regex=False, na=False)]
+        if not m.empty:
+            matched = m
+
+    exact = bool(next_station or prev_station) and len(matched) < len(sub)
+    r = matched.sort_values("transfer_time_min").iloc[0]
 
     def _pos(car, door):
         if pd.isna(car) or pd.isna(door):
@@ -480,7 +617,10 @@ def transfer_tip(station: str, from_line: str, to_line: str):
         return "%s호차 %s번 문" % (_n(car), _n(door))
 
     return {"alight": _pos(r["alight_car"], r["alight_door"]),
-            "board": _pos(r["board_car"], r["board_door"])}
+            "board": _pos(r["board_car"], r["board_door"]),
+            "arrive_toward": str(r["arrive_toward"]),
+            "depart_toward": str(r["depart_toward"]),
+            "direction_matched": exact}
 
 
 TIMELINE_CSS = """
@@ -513,7 +653,7 @@ TIMELINE_CSS = """
 def render_timeline(segs):
     """노선형 타임라인 카드. 사용자에게 내부 id 를 노출하지 않는다."""
     html = [TIMELINE_CSS, '<div class="mc-tl">']
-    for sg in segs:
+    for i, sg in enumerate(segs):
         if sg["kind"] == "ride":
             color = LINE_COLORS.get(str(sg["line"]), PRIMARY)
             # 방면은 경로상 다음 역 기준. 1정거장 구간은 생략한다.
@@ -537,7 +677,15 @@ def render_timeline(segs):
                 % (color, _esc(str(sg["line"])), _esc(dirlab),
                    _esc(sg["from"]), _esc(sg["to"]), meta))
         else:
-            tip = transfer_tip(sg["at"], sg["from_line"], sg["to_line"])
+            # 진행 방향을 좁히기 위해 직전/다음 역을 넘긴다.
+            prev_st = next_st = None
+            if i > 0 and segs[i - 1].get("kind") == "ride":
+                st_list = segs[i - 1].get("stations") or []
+                prev_st = st_list[-2] if len(st_list) >= 2 else None
+            if i + 1 < len(segs) and segs[i + 1].get("kind") == "ride":
+                st_list = segs[i + 1].get("stations") or []
+                next_st = st_list[1] if len(st_list) >= 2 else None
+            tip = transfer_tip(sg["at"], sg["from_line"], sg["to_line"], prev_st, next_st)
             tmin = sg.get("minutes")
             body = ('🚶 %s호선 → %s호선%s'
                     % (_esc(str(sg["from_line"])), _esc(str(sg["to_line"])),
@@ -549,9 +697,13 @@ def render_timeline(segs):
                     rows.append("하차 위치: %s" % _esc(tip["alight"]))
                 if tip["board"]:
                     rows.append("승차 위치: %s" % _esc(tip["board"]))
+                note = ("%s 하차 · %s 승차 기준. "
+                        % (_esc(tip["arrive_toward"]), _esc(tip["depart_toward"]))
+                        if tip.get("direction_matched") else "")
                 extra = ('<div class="mc-tf-b">%s</div>'
-                         '<div class="mc-note">객차별 혼잡도 데이터가 아니라 '
-                         '환승 동선상 유리한 위치입니다.</div>' % " · ".join(rows))
+                         '<div class="mc-note">%s객차별 혼잡도 데이터가 아니라 '
+                         '환승 동선상 유리한 위치입니다.</div>'
+                         % (" · ".join(rows), note))
             html.append(
                 '<div class="mc-tf"><div class="mc-tf-h">↓ %s역 환승</div>'
                 '<div class="mc-tf-b">%s</div>%s</div>'
@@ -610,7 +762,7 @@ def page_route():
 
     # ---------- 왼쪽 패널 ----------
     with left:
-        keys = disp["station_key"].tolist()
+        keys = sorted(disp["station_key"].tolist())   # 가나다순
         labels = {r.station_key: short_label(r.station_key, r.available_lines)
                   for r in disp.itertuples()}
 
@@ -662,12 +814,15 @@ def page_route():
             if not row.empty:
                 r = row.iloc[0]
                 with st.container(border=True):
-                    st.markdown("**선택한 역 · %s**" % r["display_name"])
-                    st.markdown(line_badges(r["available_lines"]), unsafe_allow_html=True)
+                    st.markdown(
+                        "<div style='font-weight:700;margin-bottom:6px'>"
+                        "선택한 역 · %s <span style='margin-left:4px'>%s</span></div>"
+                        % (r["display_name"], line_badges(r["available_lines"])),
+                        unsafe_allow_html=True)
                     b1, b2 = st.columns(2)
                     # selectbox 위젯 state(sel_origin/sel_dest)까지 같이 갱신해야
                     # 위쪽 입력창이 지도 선택과 동기화된다.
-                    b1.button("출발역으로 설정", width="stretch", type="primary",
+                    b1.button("출발역으로 설정", width="stretch",
                               key="btn_set_origin",
                               on_click=_set_endpoint, args=("origin", sel))
                     b2.button("도착역으로 설정", width="stretch",
@@ -675,6 +830,16 @@ def page_route():
                               on_click=_set_endpoint, args=("dest", sel))
                     with st.expander("역 혼잡 정보"):
                         show_station_info(sel)
+
+    # 출발/도착이 바뀌면 이전 결과와 노선도 하이라이트를 즉시 지운다.
+    # 지도를 그리기 **전에** 실행해야 이전 경로가 한 번 더 그려지지 않는다.
+    if (st.session_state.get("last_od")
+            != (st.session_state["origin_station_key"],
+                st.session_state["destination_station_key"])):
+        st.session_state["last_od"] = (st.session_state["origin_station_key"],
+                                       st.session_state["destination_station_key"])
+        st.session_state["route_result"] = None
+        st.session_state["route_fallback"] = None
 
     # ---------- 오른쪽 노선도 ----------
     with right:
@@ -700,12 +865,6 @@ def page_route():
     # ---------- 자동 계산 ----------
     o = st.session_state["origin_station_key"]
     d_ = st.session_state["destination_station_key"]
-
-    # 출발/도착이 바뀌면 이전 결과와 노선도 하이라이트를 즉시 지운다.
-    if st.session_state.get("last_od") != (o, d_):
-        st.session_state["last_od"] = (o, d_)
-        st.session_state["route_result"] = None
-        st.session_state["route_fallback"] = None
 
     st.divider()
     if not (o and d_):
@@ -857,34 +1016,48 @@ def fallback_route(o: str, d: str):
 # 페이지 2. 혼잡 조회
 # --------------------------------------------------------------------------
 def show_station_info(station_key: str):
+    """선택한 역의 혼잡 정보. 환승역은 노선을 골라 하나씩 본다.
+
+    환승역에서 방향만으로 묶으면 서로 다른 노선의 상·하행이 한 그래프에 섞여
+    (이수 4호선/7호선처럼) 어느 노선인지 알 수 없다. 노선을 먼저 고르게 한다.
+    """
     prof = load_mart("congestion_station_profile")
     lookup = load_mart("congestion_edge_lookup")
     if prof is None:
         st.caption("혼잡도 프로파일이 없습니다.")
         return
-    sub = prof[prof["station_name"] == station_key]
+    sub = prof[(prof["station_name"] == station_key) & (prof["day_type"] == "weekday")]
     if sub.empty:
         st.caption("해당 역의 관측 데이터가 없습니다.")
         return
-    wd = sub[sub["day_type"] == "weekday"].copy()
-    if not wd.empty:
-        wd["호선"] = wd["line_id"].astype(str) + "호선"
-        wd["방향"] = wd["direction"].map(DIRECTION_KO).fillna(wd["direction"])
-        # st.table 은 정적 표라 컬럼 드래그·재정렬이 되지 않는다. 순서가 고정된다.
-        st.table(round1(wd[["호선", "방향", "mean_congestion", "max_congestion",
-                            "peak_time_bin", "peak_duration_min"]]
-                        .rename(columns={"mean_congestion": "평균(%)",
-                                         "max_congestion": "최대(%)",
-                                         "peak_time_bin": "피크",
-                                         "peak_duration_min": "지속(분)"}))
-                 .reset_index(drop=True))
+
+    lines = sorted(sub["line_id"].astype(str).unique(), key=lambda x: int(x))
+    if len(lines) > 1:
+        line = st.radio("노선", lines, horizontal=True,
+                        format_func=lambda x: "%s호선" % x,
+                        key="info_line_%s" % station_key)
+    else:
+        line = lines[0]
+
+    one = sub[sub["line_id"].astype(str) == line].copy()
+    one["방향"] = one["direction"].map(DIRECTION_KO).fillna(one["direction"])
+    st.table(round1(one[["방향", "mean_congestion", "max_congestion",
+                         "peak_time_bin", "peak_duration_min"]]
+                    .rename(columns={"mean_congestion": "평균(%)",
+                                     "max_congestion": "최대(%)",
+                                     "peak_time_bin": "피크",
+                                     "peak_duration_min": "지속(분)"}))
+             .reset_index(drop=True))
+
     if lookup is not None:
         lk = lookup[(lookup["station_name"] == station_key)
-                    & (lookup["day_type"] == "weekday")]
+                    & (lookup["day_type"] == "weekday")
+                    & (lookup["line_id"].astype(str) == line)]
         if not lk.empty:
             piv = lk.pivot_table(index="time_bin", columns="direction",
                                  values="congestion_median").sort_index()
-            st.line_chart(piv, height=220)
+            piv.columns = [DIRECTION_KO.get(c, c) for c in piv.columns]
+            congestion_line_chart(piv, 220)
 
 
 def page_congestion():
@@ -895,7 +1068,7 @@ def page_congestion():
         st.warning("`04_build_congestion_mart.py` 실행이 필요합니다.")
         return
     disp = load_display_master()
-    keys = disp["station_key"].tolist() if disp is not None \
+    keys = sorted(disp["station_key"].tolist()) if disp is not None \
         else sorted(prof["station_name"].unique())
     c1, c2 = st.columns([2, 1])
     key = c1.selectbox("역", keys, index=keys.index("서울역") if "서울역" in keys else 0)
@@ -927,7 +1100,7 @@ def page_congestion():
             piv = lk.pivot_table(index="time_bin", columns="direction",
                                  values="congestion_median").sort_index()
             piv.columns = [DIRECTION_KO.get(c, c) for c in piv.columns]
-            st.line_chart(piv, height=320)
+            congestion_line_chart(piv, 320)
             st.caption("스냅샷 11개의 중앙값입니다. 특정 날짜의 실측값이 아닙니다.")
 
     st.divider()
@@ -976,7 +1149,7 @@ def page_event():
                    "절대 증가 인원을 함께 봅니다.")
 
         st.subheader("이벤트별 상세")
-        det = peak.nlargest(15, "spike_ratio")[
+        det = peak.nlargest(15, "spike_ratio").sort_values("date")[
             ["event_name", "station_name", "date", "spike_ratio", "control_ratio",
              "did_ratio_normalized", "did_absolute_lift", "parallel_trend_ok"]].copy()
         det["event_name"] = det["event_name"].map(ko_event_name)
@@ -1013,15 +1186,22 @@ def page_event():
 # --------------------------------------------------------------------------
 def page_transfer():
     st.title("빠른 환승 안내")
-    st.warning("객차별 혼잡도 데이터가 없습니다. 따라서 '이 칸이 덜 붐빈다'가 아니라 "
-               "**환승 동선상 유리한 칸**만 안내합니다.")
+    st.warning("아직 객차별 혼잡도 데이터가 없습니다. "
+               "따라서 **환승 동선상 유리한 칸**만 안내합니다.")
     tip = load_mart("transfer_tip_mart")
     if tip is None:
         st.info("`06_build_route_graph.py` 실행이 필요합니다.")
         return
     st.caption("원본 환승 데이터에 있는 조합만 안내합니다. 없는 조합은 추정하지 않습니다.")
     c1, c2, c3 = st.columns(3)
-    stn = c1.selectbox("환승역", sorted(tip["station_name"].unique()))
+    disp = load_display_master()
+    tkeys = sorted(tip["station_name"].unique())
+    tlabels = {}
+    if disp is not None:
+        lm = dict(zip(disp["station_key"], disp["available_lines"]))
+        tlabels = {k: short_label(k, lm.get(k, "")) for k in tkeys}
+    stn = c1.selectbox("환승역", tkeys,
+                       format_func=lambda k: tlabels.get(k, k))
     sub = tip[tip["station_name"] == stn]
     fl = c2.selectbox("타고 온 호선", sorted(sub["from_line"].astype(str).unique()))
     sub2 = sub[sub["from_line"].astype(str) == fl]
@@ -1049,7 +1229,7 @@ def page_transfer():
         "환승 소요(분)": np.round(pd.to_numeric(sub3["transfer_time_min"],
                                               errors="coerce"), 1).values,
     })
-    st.table(view.reset_index(drop=True))
+    st.table(round1(view).reset_index(drop=True))
     st.caption("위치는 '호차-문' 입니다. 예: 2-1 = 2번째 칸 1번 문")
     te = load_mart("transfer_edge_mart")
     if te is not None:
@@ -1216,8 +1396,7 @@ MetroCalm 은 사용자에게 **역 단위 입력**을 제공하지만, 내부 �
 # --------------------------------------------------------------------------
 def main():
     st.sidebar.title("🚇 MetroCalm")
-    st.sidebar.caption("덜 붐비는 지하철 경로를 찾아보세요.\n\n"
-                       "과거 혼잡 패턴을 바탕으로 쾌적한 이동을 도와드립니다.")
+    st.sidebar.caption("서울 지하철 혼잡도 기반 쾌적 경로 추천 시스템")
     if not st.session_state.get("menu"):
         st.session_state["menu"] = MENUS[0]
     for m in MENUS:
@@ -1227,7 +1406,7 @@ def main():
             on_click=lambda x=m: st.session_state.update(menu=x))
     menu = st.session_state["menu"]
     st.sidebar.divider()
-    st.sidebar.caption("실시간 정보가 아닌 과거 패턴 기반 예측입니다.")
+    st.sidebar.caption("실시간 정보가 아닌  \n과거 패턴 기반 예측입니다.")
 
     # 이름 기반 dispatch. 메뉴 순서를 바꿔도 연결이 어긋나지 않는다.
     {"쾌적 경로 찾기": page_route,
