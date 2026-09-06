@@ -1,0 +1,8 @@
+﻿table,status,rows,failed_checks,detail
+station_master,PASS,283,0,station_master.csv
+stg_congestion,PASS,715299,0,stg_congestion.parquet
+congestion_30min_mart,PASS,715065,0,congestion_30min_mart.parquet
+congestion_training_mart,PASS,706678,0,congestion_training_mart.parquet
+route_edge_mart,PASS,536,0,route_edge_mart.parquet
+transfer_edge_mart,PASS,81,0,transfer_edge_mart.parquet
+event_spike_mart,PASS,1022,0,event_spike_mart.parquet

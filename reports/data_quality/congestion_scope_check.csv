@@ -1,0 +1,9 @@
+﻿line_id,n_stations,min_code,max_code,directions
+1,10,150,159,down|up
+2,54,201,9003,inner|outer
+3,34,309,342,down|up
+4,26,409,434,down|up
+5,57,2511,9005,down|up
+6,40,2611,9006,down|up
+7,42,2711,2752,down|up
+8,19,2810,2828,down|up

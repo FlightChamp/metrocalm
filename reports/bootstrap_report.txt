@@ -1,0 +1,45 @@
+﻿====================================================================
+ MetroCalm bootstrap report
+ root : C:\Programming\MyProject\metro_calm_project
+ time : 2026-09-03 20:34:12
+====================================================================
+[생성된 폴더]  0 개
+[생성된 파일]  13 개
+   + data/master/line_master.csv
+   + data/master/transfer_station_master.csv
+   + data/master/branch_node_master.csv
+   + data/master/event_station_master.csv
+   + data/master/event_calendar_master.csv
+   + data/master/university_event_master.csv
+   + data/master/station_alias_master.csv
+   + data/master/direction_master.csv
+   + data/master/station_code_usage.csv
+   + config/project_scope.yaml
+   + requirements.txt
+   + .gitignore
+   + README.md
+[건너뛴 파일]  1 개 (이미 존재. --force 로 덮어쓰기)
+   . data/master/station_master.csv (실데이터 283행 — 보호됨)
+
+[master 테이블 요약]
+   line_master              : 11 rows (지선 포함)
+   transfer_station_master  : 35 rows  (기대값 35)
+   branch_node_master       : 4 rows  (기대값 4)
+   direction_master         : 22 rows
+   station_code_usage       : 7 rows
+   event_station_master     : 27 rows
+   event_calendar_master    : 16 rows
+   station_alias_master     : 25 rows (seed)
+   station_master           : 0 rows (헤더만 — Phase 1 에서 자동 생성)
+
+[검증 경고 / 확인 필요]
+   ! [교란요인] 2022-10-08 에 서울세계불꽃축제 2022 와 논술:홍익대 동시 발생 → spike 해석 시 분리 필요
+   ! [교란요인] 2023-10-07 에 서울세계불꽃축제 2023 와 논술:홍익대 동시 발생 → spike 해석 시 분리 필요
+   ! [교란요인] 2024-10-05 에 서울세계불꽃축제 2024 와 논술:홍익대 동시 발생 → spike 해석 시 분리 필요
+   ! [교란요인] 2025-09-27 에 서울세계불꽃축제 2025 와 논술:연세대 동시 발생 → spike 해석 시 분리 필요
+
+[다음 단계]
+   1) data/raw/* 하위에 원본 파일을 그대로 복사
+   2) scripts/01_build_station_master.py 로 station_master 자동 생성
+   3) unmapped_station_report.csv 확인 후 alias_master 확장
+====================================================================

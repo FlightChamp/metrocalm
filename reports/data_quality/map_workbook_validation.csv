@@ -1,0 +1,13 @@
+﻿check,status,detail
+필수 시트 존재,PASS,6개 모두 존재
+visual node 좌표 결측 없음,PASS,노드 277개
+Line_Sequences 참조 유효,PASS,무효 0건 []
+Transfer_Links 참조 유효,PASS,무효 []
+"좌표가 캔버스 범위 안(0~5120, 0~2880)",PASS,x 788~4356 / y 240~2652
+2호선 main loop 닫힘 가능,PASS,시청_L2 ... 충정로_L2 → 렌더링 시 마지막-처음 연결
+Station_Click_Areas station_key 유일,PASS,중복 0
+Station_Labels station_key 유일,PASS,중복 0
+워크북 역 = 라우팅 그래프 역,PASS,워크북 240 / 그래프 240 / 차집합 []
+좌표가 완전히 겹치는 visual node,WARN,35쌍 (그중 동일 역 35쌍은 정상)
+6호선 응암순환 렌더링 보정,WARN,구산_L6 다음에 응암_L6 을 삽입해 loop 복귀를 표시
+candidate_station_uids 채움,PASS,미채움 0 / 240
