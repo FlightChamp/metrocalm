@@ -16,7 +16,9 @@ MetroCalm 은 사용자에게 역 단위 입력을 제공하지만, 내부 그�
 출력
 ----
     data/master/station_display_master.csv   역 단위 선택용 마스터
-    data/master/station_map_layout.csv       노선도 렌더링용 좌표
+
+노선도 좌표는 이 스크립트가 만들지 않는다.
+좌표 워크북(5120x2880)이 source of truth 이고 14_import_map_workbook.py 가 가져온다.
 
 좌표 생성 방식
 --------------
@@ -28,7 +30,6 @@ MetroCalm 은 사용자에게 역 단위 입력을 제공하지만, 내부 그�
 사용법
 ------
     python scripts/12_build_display_masters.py --root .
-    python scripts/12_build_display_masters.py --root . --keep-coords
 """
 
 from __future__ import annotations
@@ -66,12 +67,11 @@ def line_of(node: str) -> str:
 
 class DisplayMasterBuilder:
 
-    def __init__(self, root: Path, keep_coords: bool):
+    def __init__(self, root: Path):
         self.root = root
         self.marts = root / "data" / "marts"
         self.master = root / "data" / "master"
         self.master.mkdir(parents=True, exist_ok=True)
-        self.keep_coords = keep_coords
         self.notes: list[str] = []
 
     # ---------- station_display_master ----------
@@ -122,87 +122,11 @@ class DisplayMasterBuilder:
                              int(df.is_event_station.sum())))
         return df
 
-    # ---------- 좌표 ----------
-    def build_layout(self, display: pd.DataFrame) -> pd.DataFrame:
-        import networkx as nx
-        ride = load_mart(self.marts, "route_edge_mart")
-
-        # 역 단위 무향 그래프 (지선 노드는 본선 역명으로 합친다)
-        G = nx.Graph()
-        for r in ride.itertuples():
-            a, b = station_of(r.from_node), station_of(r.to_node)
-            if a == b:
-                continue
-            G.add_edge(a, b, line=str(r.line_id))
-
-        pos_prev = {}
-        prev_path = self.master / "station_map_layout.csv"
-        if self.keep_coords and prev_path.exists():
-            prev = pd.read_csv(prev_path)
-            pos_prev = {r.map_station_key: (r.map_x, r.map_y) for r in prev.itertuples()
-                        if pd.notna(r.map_x)}
-            self.notes.append("기존 좌표 %d개 보존(--keep-coords)" % len(pos_prev))
-
-        try:
-            pos = nx.kamada_kawai_layout(G)
-            algo = "kamada_kawai"
-        except Exception:
-            pos = nx.spring_layout(G, seed=42, iterations=300)
-            algo = "spring"
-        self.notes.append("좌표 알고리즘: %s (schematic, 실제 위경도 아님)" % algo)
-
-        xs = np.array([p[0] for p in pos.values()])
-        ys = np.array([p[1] for p in pos.values()])
-        def scale(v, arr):
-            lo, hi = arr.min(), arr.max()
-            return float((v - lo) / (hi - lo) * 100.0) if hi > lo else 50.0
-
-        rep_line = {}
-        for r in ride.itertuples():
-            for n in (r.from_node, r.to_node):
-                rep_line.setdefault(station_of(n), str(r.line_id))
-
-        rows = []
-        for _, d in display.iterrows():
-            k = d["station_key"]
-            if k in pos_prev:
-                x, y = pos_prev[k]
-            elif k in pos:
-                x, y = scale(pos[k][0], xs), scale(pos[k][1], ys)
-            else:
-                x, y = np.nan, np.nan
-            rows.append({
-                "map_station_key": k,
-                "station_name": d["station_name"],
-                "display_name": d["display_name"],
-                "available_lines": d["available_lines"],
-                "candidate_station_uids": d["candidate_station_uids"],
-                "representative_line_id": rep_line.get(k, d["available_lines"].split(",")[0]),
-                "branch_code": "branch" if d["is_branch_node"] else "main",
-                "map_x": round(x, 3) if pd.notna(x) else np.nan,
-                "map_y": round(y, 3) if pd.notna(y) else np.nan,
-                "label_dx": 0.0, "label_dy": 1.2,
-                "is_transfer_station": d["is_transfer_station"],
-                "is_branch_node": d["is_branch_node"],
-                "is_event_station": d["is_event_station"],
-                "display_priority": (1 if d["is_transfer_station"] else
-                                     (2 if d["is_event_station"] else 3)),
-            })
-        lay = pd.DataFrame(rows)
-        n_missing = int(lay["map_x"].isna().sum())
-        if n_missing:
-            self.notes.append("좌표 미배치 %d개 (지도에 표시되지 않음)" % n_missing)
-        return lay
-
     # ---------- 실행 ----------
     def run(self):
         disp = self.build_display()
-        lay = self.build_layout(disp)
-
         p1 = self.master / "station_display_master.csv"
-        p2 = self.master / "station_map_layout.csv"
         disp.to_csv(p1, index=False, encoding=ENC)
-        lay.to_csv(p2, index=False, encoding=ENC)
 
         print("=" * 84)
         print(" 12_build_display_masters - 완료")
@@ -217,17 +141,15 @@ class DisplayMasterBuilder:
         print(disp["n_lines"].value_counts().sort_index().to_string())
         print("\n[생성 파일]")
         print("  station_display_master  %s (%d행)" % (p1, len(disp)))
-        print("  station_map_layout      %s (%d행)" % (p2, len(lay)))
+        print("\n  노선도 좌표는 14_import_map_workbook.py 가 좌표 워크북에서 만든다.")
         print("=" * 84)
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default=".")
-    ap.add_argument("--keep-coords", action="store_true",
-                    help="기존 station_map_layout.csv 의 좌표를 보존한다(수작업 배치 후 사용)")
     args = ap.parse_args(argv)
-    DisplayMasterBuilder(Path(args.root), args.keep_coords).run()
+    DisplayMasterBuilder(Path(args.root)).run()
     return 0
 
 

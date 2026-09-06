@@ -1,6 +1,3 @@
-﻿# MetroCalm Streamlit 테마
-# 탭 강조선, 라디오, 포커스 링 등은 CSS 가 아니라 primaryColor 가 그린다.
-# 기본값 #FF4B4B(빨강)를 브랜드 골드로 바꾼다.
 [theme]
 primaryColor = "#8D7150"
 backgroundColor = "#FFFFFF"

@@ -78,6 +78,61 @@ DIRECTION_KO = {"up": "상행", "down": "하행", "inner": "내선", "outer": "�
 DAY_TYPE_KO = {"weekday": "평일", "saturday": "토요일", "sunday": "일요일"}
 
 # ---------------------------------------------------------------------------
+# 노선별 혼잡 단면용 서비스 계통 정의.
+#   화면 표시명과 내부 조회 키(line_id / branch / direction)를 분리한다.
+#   역 순서는 station_code 로 정렬하면 안 된다.
+#   성수지선이 성수(211) -> 용답(244) -> 신답(245) -> 용두(250) -> 신설동(246) 처럼
+#   번호 순서와 운행 순서가 다르기 때문이다. 그래프를 걸어서 순서를 만든다.
+#   directions: (표시명, 내부 direction 코드, 시작역, 끝역)
+# ---------------------------------------------------------------------------
+SERVICE_PATTERNS = [
+    {"label": "1호선", "line": "1", "scope": "main",
+     "directions": [("청량리 방면", "up", "서울역", "청량리"),
+                    ("서울역 방면", "down", "청량리", "서울역")]},
+    {"label": "2호선 본선", "line": "2", "scope": "line2_main",
+     "directions": [("내선순환", "inner", "시청", "충정로"),
+                    ("외선순환", "outer", "시청", "을지로입구")]},
+    {"label": "2호선 성수지선", "line": "2", "scope": "seongsu",
+     "directions": [("성수 방면", "inner", "신설동", "성수"),
+                    ("신설동 방면", "outer", "성수", "신설동")]},
+    {"label": "2호선 신정지선", "line": "2", "scope": "sinjeong",
+     "directions": [("까치산 방면", "inner", "신도림", "까치산"),
+                    ("신도림 방면", "outer", "까치산", "신도림")]},
+    {"label": "3호선", "line": "3", "scope": "main",
+     "directions": [("지축 방면", "up", "오금", "지축"),
+                    ("오금 방면", "down", "지축", "오금")]},
+    {"label": "4호선", "line": "4", "scope": "main",
+     "directions": [("불암산 방면", "up", "남태령", "불암산"),
+                    ("남태령 방면", "down", "불암산", "남태령")]},
+    {"label": "5호선 방화–하남검단산", "line": "5", "scope": "hanam",
+     "directions": [("방화 방면", "up", "하남검단산", "방화"),
+                    ("하남검단산 방면", "down", "방화", "하남검단산")]},
+    {"label": "5호선 방화–마천", "line": "5", "scope": "macheon",
+     "directions": [("방화 방면", "up", "마천", "방화"),
+                    ("마천 방면", "down", "방화", "마천")]},
+    {"label": "6호선", "line": "6", "scope": "main",
+     "directions": [("신내 → 응암 방면", "up", "신내", "응암"),
+                    ("응암순환 → 신내 방면", "down", "응암", "신내")]},
+    {"label": "7호선", "line": "7", "scope": "main",
+     "directions": [("장암 방면", "up", "온수", "장암"),
+                    ("온수 방면", "down", "장암", "온수")]},
+    {"label": "8호선", "line": "8", "scope": "main",
+     "directions": [("암사역사공원 방면", "up", "모란", "암사역사공원"),
+                    ("모란 방면", "down", "암사역사공원", "모란")]},
+]
+
+# 2호선 지선 전용 역 (본선 순서에 섞이면 안 된다)
+SEONGSU_ONLY = {"용답", "신답", "용두", "신설동"}
+SINJEONG_ONLY = {"도림천", "양천구청", "신정네거리", "까치산"}
+# 5호선 강동 이후 분기
+HANAM_ONLY = {"길동", "굽은다리", "명일", "고덕", "상일동", "강일", "미사",
+              "하남풍산", "하남시청", "하남검단산"}
+MACHEON_ONLY = {"둔촌동", "올림픽공원", "방이", "오금", "개롱", "거여", "마천"}
+
+# 내부 노드명을 사용자 표시명으로 (내부 표기를 그대로 노출하지 않는다)
+DISPLAY_STATION_NAME = {"응암S": "응암(순환 시작)"}
+
+# ---------------------------------------------------------------------------
 # 전역 스타일. 화이트 베이스 + 네이비 Primary + 골드 Secondary.
 # 노선색은 노선 구분에만 쓰고, 혼잡 위험은 주황/빨강으로 제한한다.
 # ---------------------------------------------------------------------------
@@ -346,7 +401,7 @@ DEFAULTS = {
 for k, v in DEFAULTS.items():
     st.session_state.setdefault(k, v)
 
-MENUS = ["쾌적 경로 찾기", "역·시간대 혼잡 조회", "빠른 환승 안내",
+MENUS = ["쾌적 경로 찾기", "시간대별 혼잡 조회", "빠른 환승 안내",
          "이벤트 혼잡 경보", "프로젝트 소개 및 검증 리포트"]
 
 
@@ -699,10 +754,14 @@ def render_timeline(segs):
                 st_list = segs[i + 1].get("stations") or []
                 next_st = st_list[1] if len(st_list) >= 2 else None
             tip = transfer_tip(sg["at"], sg["from_line"], sg["to_line"], prev_st, next_st)
-            tmin = sg.get("minutes")
-            body = ('🚶 %s호선 → %s호선%s'
-                    % (_esc(str(sg["from_line"])), _esc(str(sg["to_line"])),
-                       ("" if tmin is None else " · 약 %d분" % max(1, round(tmin)))))
+            tmin, wmin = sg.get("minutes"), sg.get("wait_min")
+            parts = ["🚶 %s호선 → %s호선"
+                     % (_esc(str(sg["from_line"])), _esc(str(sg["to_line"])))]
+            if tmin is not None:
+                parts.append("도보 약 %d분" % max(1, round(tmin)))
+            if wmin:
+                parts.append("대기 약 %.0f분" % max(1, round(wmin)))
+            body = " · ".join(parts)
             extra = ""
             if tip and (tip["alight"] or tip["board"]):
                 rows = []
@@ -729,9 +788,15 @@ def route_summary_line(ev, o, d_):
     for sg in ev["segments"]:
         if sg["kind"] == "ride" and sg["line"] not in lines:
             lines.append(sg["line"])
-    return "%s → %s · %s · 환승 %d회 · 예상 %d분 · 최대 기대 혼잡도 %.0f%%" % (
+    wait = ev.get("transfer_wait_min") or 0
+    walk = sum(sg.get("minutes") or 0 for sg in ev.get("segments") or []
+               if sg.get("kind") == "transfer")
+    tail = (" (승차 %d분 + 환승 도보·대기 %d분)"
+            % (round((ev.get("ride_time_min") or 0) - walk), round(walk + wait))
+            ) if (wait or walk) else ""
+    return "%s → %s · %s · 환승 %d회 · 예상 %d분%s · 최대 기대 혼잡도 %.0f%%" % (
         o, d_, " + ".join("%s호선" % x for x in lines),
-        ev.get("transfer_count", 0), round(ev.get("actual_time_min") or 0),
+        ev.get("transfer_count", 0), round(ev.get("actual_time_min") or 0), tail,
         ev.get("max_congestion") or 0)
 
 
@@ -745,6 +810,13 @@ def route_card(title, ev, o, d_, note=None, tone="normal"):
         c[2].metric("최대 기대 혼잡도", "%.0f%%" % (ev["max_congestion"] or 0))
         c[3].metric("환승", "%d회" % ev["transfer_count"])
         c[4].metric("혼잡 주의 구간", "%d개" % ev.get("p95_exposure_count", 0))
+        wait = ev.get("transfer_wait_min") or 0
+        if wait:
+            walk = sum(sg.get("minutes") or 0 for sg in ev["segments"]
+                       if sg.get("kind") == "transfer")
+            st.caption("예상 소요시간 = 승차 %.0f분 + 환승 도보·대기 %.0f분. "
+                       "대기시간은 30분 단위 평균 배차간격 기반 추정입니다."
+                       % ((ev.get("ride_time_min") or 0) - walk, walk + wait))
         render_timeline(ev["segments"])
         if ev.get("event_risk_min"):
             st.caption("이벤트 영향으로 쾌적 체감시간 +%.1f분 가산" % ev["event_risk_min"])
@@ -939,8 +1011,8 @@ def _render_route_result(result, fallback, o, d_):
                    "예상 소요시간은 %+.1f분이지만 최대 기대 혼잡도가 %.1f%%p 낮습니다."
                    % (alt["time_loss_vs_fastest"], alt["comfort_gain_vs_fastest"]), "good")
     else:
-        st.warning("현재 조건에서는 최단경로와 **뚜렷하게 다른 쾌적 대안이 없습니다.** "
-                   "무리한 우회 경로 대신, 같은 경로에서 더 덜 붐비는 출발 시간을 추천합니다.")
+        st.warning("현재 최단 경로 외에 **유의미한 쾌적 대안 경로가 없습니다.** "
+                   "대신, 같은 경로에서 더 덜 붐비는 출발 시간을 추천합니다.")
         ta = result.get("time_alternative")
         if ta:
             st.info("대신 **%s 출발**을 권장합니다. 같은 경로의 최대 기대 혼잡도가 "
@@ -952,6 +1024,8 @@ def _render_route_result(result, fallback, o, d_):
         rows = []
         for c in result["candidates"]:
             rows.append({"예상 소요시간": c["actual_time_min"],
+                         "승차·도보": c.get("ride_time_min"),
+                         "환승 대기": c.get("transfer_wait_min"),
                          "쾌적 체감시간": c["perceived_time_min"],
                          "평균 기대 혼잡도": c["avg_congestion"],
                          "최대 기대 혼잡도": c["max_congestion"],
@@ -960,9 +1034,7 @@ def _render_route_result(result, fallback, o, d_):
                          "경로": " → ".join(
                              s["to"] for s in c["segments"] if s["kind"] == "ride")})
         st.dataframe(round1(pd.DataFrame(rows)), width="stretch", hide_index=True)
-    st.caption("출발역에서 어떤 노선을 처음 타는지는 알고리즘이 후보를 비교해 결정합니다. "
-               "최초 승차는 환승으로 세지 않습니다. (출발 후보 노드 %d개)"
-               % result.get("n_origin_nodes", 1))
+
 
 
 @st.cache_data(show_spinner=False)
@@ -1071,8 +1143,16 @@ def show_station_info(station_key: str):
 
 
 def page_congestion():
-    st.title("역·시간대 혼잡 조회")
+    st.title("시간대별 혼잡 조회")
     st.info(DISCLAIMER)
+    tab_st, tab_line = st.tabs(["역별 혼잡도", "노선별 혼잡도"])
+    with tab_st:
+        page_congestion_station()
+    with tab_line:
+        page_congestion_line()
+
+
+def page_congestion_station():
     prof = load_mart("congestion_station_profile")
     if prof is None:
         st.warning("`04_build_congestion_mart.py` 실행이 필요합니다.")
@@ -1080,20 +1160,33 @@ def page_congestion():
     disp = load_display_master()
     keys = sorted(disp["station_key"].tolist()) if disp is not None \
         else sorted(prof["station_name"].unique())
+    labels = {}
+    if disp is not None:
+        lm = dict(zip(disp["station_key"], disp["available_lines"]))
+        labels = {k: short_label(k, lm.get(k, "")) for k in keys}
+
     c1, c2 = st.columns([2, 1])
-    key = c1.selectbox("역", keys, index=keys.index("서울역") if "서울역" in keys else 0)
+    key = c1.selectbox("역", keys, index=keys.index("서울역") if "서울역" in keys else 0,
+                       format_func=lambda k: labels.get(k, k))
     day_type = c2.selectbox("요일유형", ["weekday", "saturday", "sunday"],
                             format_func=lambda x: DAY_TYPE_KO[x])
+
     sub = prof[(prof["station_name"] == key) & (prof["day_type"] == day_type)]
     if sub.empty:
         st.info("해당 조합의 관측 데이터가 없습니다.")
         return
-    show = sub.copy()
-    show["호선"] = show["line_id"].astype(str) + "호선"
-    show["방향"] = show["direction"].map(DIRECTION_KO).fillna(show["direction"])
-    st.table(round1(show[["호선", "방향", "mean_congestion", "max_congestion",
-                          "p95_congestion", "peak_time_bin", "peak_duration_min",
-                          "am_peak_mean", "pm_peak_mean"]]
+
+    # 환승역은 노선을 골라 하나씩 본다. 섞으면 어느 노선의 값인지 알 수 없다.
+    lines = sorted(sub["line_id"].astype(str).unique(), key=lambda x: int(x))
+    line = (st.radio("노선", lines, horizontal=True,
+                     format_func=lambda x: "%s호선" % x, key="cong_line_%s" % key)
+            if len(lines) > 1 else lines[0])
+
+    one = sub[sub["line_id"].astype(str) == line].copy()
+    one["방향"] = one["direction"].map(DIRECTION_KO).fillna(one["direction"])
+    st.table(round1(one[["방향", "mean_congestion", "max_congestion",
+                         "p95_congestion", "peak_time_bin", "peak_duration_min",
+                         "am_peak_mean", "pm_peak_mean"]]
                     .rename(columns={"mean_congestion": "평균(%)",
                                      "max_congestion": "최대(%)",
                                      "p95_congestion": "상위5%(%)",
@@ -1102,11 +1195,14 @@ def page_congestion():
                                      "am_peak_mean": "오전피크",
                                      "pm_peak_mean": "오후피크"}))
              .reset_index(drop=True))
+
     lookup = load_mart("congestion_edge_lookup")
     if lookup is not None:
-        lk = lookup[(lookup["station_name"] == key) & (lookup["day_type"] == day_type)]
+        lk = lookup[(lookup["station_name"] == key)
+                    & (lookup["day_type"] == day_type)
+                    & (lookup["line_id"].astype(str) == line)]
         if not lk.empty:
-            st.subheader("시간대별 기대 혼잡도")
+            st.subheader("%s호선 시간대별 기대 혼잡도" % line)
             piv = lk.pivot_table(index="time_bin", columns="direction",
                                  values="congestion_median").sort_index()
             piv.columns = [DIRECTION_KO.get(c, c) for c in piv.columns]
@@ -1128,9 +1224,170 @@ def page_congestion():
     st.caption("최댓값이 가장 큰 역과 피크가 가장 오래 지속되는 역은 서로 다릅니다.")
 
 
-# --------------------------------------------------------------------------
-# 페이지 3. 이벤트 경보
-# --------------------------------------------------------------------------
+@st.cache_data(show_spinner=False)
+def line_node_sequence(line: str, scope: str, start: str, end: str):
+    """그래프를 걸어서 노선 계통의 **운행 순서** 노드 목록을 만든다.
+
+    station_code 정렬은 쓸 수 없다. 성수지선이 성수(211) -> 용답(244) -> 신답(245)
+    -> 용두(250) -> 신설동(246) 처럼 번호와 운행 순서가 다르기 때문이다.
+    분기역은 본선/지선 노드가 나뉘어 있으므로 같은 역 안의 계통 환승도 이어준다.
+    """
+    ride = load_mart("route_edge_mart")
+    if ride is None:
+        return []
+    r = ride[ride["line_id"].astype(str) == str(line)]
+
+    def sname(n):
+        return str(n).split("_", 1)[1].split("@")[0]
+
+    def allowed(n):
+        nm, has_branch = sname(n), "@" in str(n)
+        if scope == "line2_main":
+            return not has_branch and nm not in (SEONGSU_ONLY | SINJEONG_ONLY)
+        if scope == "seongsu":
+            return ("seongsu" in str(n)) or nm in SEONGSU_ONLY
+        if scope == "sinjeong":
+            return ("sinjeong" in str(n)) or nm in SINJEONG_ONLY
+        if scope == "hanam":
+            return "macheon" not in str(n) and nm not in MACHEON_ONLY
+        if scope == "macheon":
+            return nm not in HANAM_ONLY
+        return True
+
+    adj = {}
+    for row in r.itertuples():
+        a, b = row.from_node, row.to_node
+        if allowed(a) and allowed(b):
+            adj.setdefault(a, []).append(b)
+
+    # 같은 역 안의 계통 환승(강동/성수/신도림/응암)도 이어준다.
+    tr = load_mart("transfer_edge_mart")
+    if tr is not None:
+        t = tr[(tr["from_line"].astype(str) == str(line))
+               & (tr["to_line"].astype(str) == str(line))]
+        for row in t.itertuples():
+            a, b = row.from_node, row.to_node
+            if allowed(a) and allowed(b):
+                adj.setdefault(a, []).append(b)
+                if scope != "main" or str(line) != "6":
+                    adj.setdefault(b, []).append(a)
+
+    nodes = set(adj) | {v for vs in adj.values() for v in vs}
+    starts = sorted(n for n in nodes if sname(n) == start)
+    ends = {n for n in nodes if sname(n) == end}
+    if not starts or not ends:
+        return []
+    cur = starts[0]
+    seq, seen = [cur], {cur}
+    while True:
+        succ = [v for v in adj.get(cur, []) if v not in seen]
+        if not succ:
+            break
+        # 순환선에서 시작하자마자 끝점으로 붙지 않도록 끝점은 마지막에 고른다.
+        pick = next((v for v in succ if v not in ends), succ[0])
+        seq.append(pick)
+        seen.add(pick)
+        cur = pick
+        if cur in ends:
+            break
+    return seq
+
+
+def page_congestion_line():
+    """노선/방향/요일유형/시간대를 고르면 노선 전체 기대 혼잡도를 역 순서대로 본다."""
+    lookup = load_mart("congestion_edge_lookup")
+    if lookup is None:
+        st.warning("`04_build_congestion_mart.py` 실행이 필요합니다.")
+        return
+
+    labels = [p["label"] for p in SERVICE_PATTERNS]
+    c1, c2 = st.columns([1.2, 1])
+    label = c1.selectbox("노선", labels, key="cs_line")
+    pat = next(p for p in SERVICE_PATTERNS if p["label"] == label)
+    dir_labels = [d[0] for d in pat["directions"]]
+    dir_label = c2.selectbox("방향", dir_labels, key="cs_dir_%s" % label)
+    _, direction, start, end = next(d for d in pat["directions"] if d[0] == dir_label)
+
+    c3, c4 = st.columns([1, 1.4])
+    day_type = c3.selectbox("요일유형", ["weekday", "saturday", "sunday"],
+                            format_func=lambda x: DAY_TYPE_KO[x], key="cs_day")
+    bins = sorted(lookup["time_bin"].dropna().unique())
+    default = bins.index("08:00~08:30") if "08:00~08:30" in bins else 0
+    time_bin = c4.selectbox("시간대", bins, index=default, key="cs_bin")
+
+    seq = line_node_sequence(pat["line"], pat["scope"], start, end)
+    if not seq:
+        st.info("노선 순서를 만들지 못했습니다. `06_build_route_graph.py` 실행을 확인하세요.")
+        return
+
+    d = lookup[(lookup["station_uid"].isin(seq))
+               & (lookup["direction"] == direction)
+               & (lookup["day_type"] == day_type)
+               & (lookup["time_bin"] == time_bin)].copy()
+    if d.empty:
+        st.info("해당 조건의 관측 데이터가 없습니다. 다른 시간대를 선택해 보세요.")
+        return
+
+    order = {n: i for i, n in enumerate(seq)}
+    d["_ord"] = d["station_uid"].map(order)
+    d = d.sort_values("_ord").drop_duplicates("station_uid").reset_index(drop=True)
+    d["표시역명"] = d["station_name"].map(lambda x: DISPLAY_STATION_NAME.get(x, x))
+    # 같은 역이 본선/지선 노드로 두 번 나오면 계통을 덧붙여 구분한다.
+    dup = d["표시역명"].duplicated(keep=False)
+    d.loc[dup, "표시역명"] = d.loc[dup].apply(
+        lambda r: "%s(순환)" % r["표시역명"] if "eungam" in str(r["station_uid"])
+        else r["표시역명"], axis=1)
+
+    import plotly.graph_objects as go
+    color = LINE_COLORS.get(pat["line"], PRIMARY)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=list(range(len(d))), y=d["congestion_median"], mode="lines+markers",
+        line=dict(color=color, width=2.6), marker=dict(size=7, color=color),
+        customdata=np.stack([d["표시역명"], [label] * len(d), [dir_label] * len(d),
+                             [DAY_TYPE_KO[day_type]] * len(d),
+                             [time_bin] * len(d)], axis=-1),
+        hovertemplate=("<b>%{customdata[0]}</b><br>%{customdata[1]} · %{customdata[2]}"
+                       "<br>%{customdata[3]} %{customdata[4]}"
+                       "<br>기대 혼잡도 %{y:.1f}%<extra></extra>"),
+        showlegend=False))
+    for y, c, t in ((80, "#9CA3AF", "체감 가중 시작 80%"),
+                    (100, WARN, "정원 100%"), (130, DANGER, "혼잡 주의 130%")):
+        if d["congestion_median"].max() >= y * 0.75:
+            fig.add_hline(y=y, line_dash="dot", line_color=c, opacity=0.55,
+                          annotation_text=t, annotation_position="top left",
+                          annotation_font_size=10)
+    fig.update_layout(
+        height=440, margin=dict(l=8, r=8, t=8, b=8),
+        plot_bgcolor="#FFFFFF", paper_bgcolor="#FFFFFF", dragmode=False,
+        xaxis=dict(fixedrange=True, tickangle=-60, gridcolor="#F3F4F6",
+                   tickmode="array", tickvals=list(range(len(d))),
+                   ticktext=d["표시역명"].tolist()),
+        yaxis=dict(fixedrange=True, title="기대 혼잡도(%)",
+                   gridcolor="#EEF0F2", rangemode="tozero"))
+    st.plotly_chart(fig, width="stretch",
+                    config={"displayModeBar": False, "scrollZoom": False})
+    st.caption("%s → %s 순서입니다. 스냅샷 11개의 중앙값 기반 기대 혼잡도이며, "
+               "실시간 값도 특정 날짜의 실측값도 아닙니다."
+               % (d["표시역명"].iloc[0], d["표시역명"].iloc[-1]))
+
+    c = st.columns(3)
+    top = d.loc[d["congestion_median"].idxmax()]
+    c[0].metric("최대 기대 혼잡도", "%.1f%%" % top["congestion_median"],
+                top["표시역명"], delta_color="off")
+    c[1].metric("구간 평균", "%.1f%%" % d["congestion_median"].mean())
+    c[2].metric("역 수", "%d개" % len(d))
+
+    with st.expander("역별 값 보기"):
+        v = d[["표시역명", "congestion_median", "congestion_p90", "n_snapshots"]].copy()
+        v.insert(0, "순서", range(1, len(v) + 1))
+        st.table(round1(v.rename(columns={"표시역명": "역명",
+                                          "congestion_median": "기대 혼잡도(%)",
+                                          "congestion_p90": "상위10%(%)",
+                                          "n_snapshots": "관측 스냅샷"}))
+                 .reset_index(drop=True))
+
+
 def page_event():
     st.title("이벤트 혼잡 경보")
     st.info(DISCLAIMER)
@@ -1202,7 +1459,6 @@ def page_transfer():
     if tip is None:
         st.info("`06_build_route_graph.py` 실행이 필요합니다.")
         return
-    st.caption("원본 환승 데이터에 있는 조합만 안내합니다. 없는 조합은 추정하지 않습니다.")
     c1, c2, c3 = st.columns(3)
     disp = load_display_master()
     tkeys = sorted(tip["station_name"].unique())
@@ -1420,7 +1676,7 @@ def main():
 
     # 이름 기반 dispatch. 메뉴 순서를 바꿔도 연결이 어긋나지 않는다.
     {"쾌적 경로 찾기": page_route,
-     "역·시간대 혼잡 조회": page_congestion,
+     "시간대별 혼잡 조회": page_congestion,
      "빠른 환승 안내": page_transfer,
      "이벤트 혼잡 경보": page_event,
      "프로젝트 소개 및 검증 리포트": page_project}.get(menu, page_route)()

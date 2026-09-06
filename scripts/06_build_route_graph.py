@@ -90,6 +90,16 @@ SEQUENCE_BREAKS = {
     ("6", "새절"): "응암",      # 응암순환 종료 후 본선 재개
 }
 
+# 응암순환 재승차 노드.
+#   구산에서 온 열차는 응암에 도착한 뒤 **새절 방향으로 빠져나간다**.
+#   따라서 구산 -> 응암 -> 역촌 을 한 번에 탈 수 없고, 응암에서 내려 다음 열차를
+#   기다려야 한다. 이를 표현하려고 순환 종료 지점을 별도 노드로 분리한다.
+#     6_응암@eungam_loop : 순환을 마치고 도착한 응암 (구산에서 진입)
+#     6_응암             : 본선 응암 (새절에서 진입, 역촌으로 순환 시작)
+#   두 노드 사이에는 재승차 대기를 나타내는 환승 엣지를 만든다.
+EUNGAM_LOOP_END_NODE = "6_응암@eungam_loop"
+EUNGAM_REBOARD_MIN = 1.0          # 승강장 이동 없음. 열차를 다시 타는 시간만.
+
 # 단방향 엣지 (6호선 응암순환)
 UNIDIRECTIONAL = {
     ("6", "응암", "역촌"),
@@ -291,7 +301,42 @@ class RouteGraphBuilder:
                 "from_code", "to_code", "travel_time_min", "distance_km",
                 "edge_type", "branch_code", "from_branch", "to_branch",
                 "is_bidirectional", "direction_of_edge"]
-        return ed[cols].reset_index(drop=True)
+        ed = ed[cols].reset_index(drop=True)
+        ed = self._split_eungam_loop_end(ed)
+        return ed
+
+    def _split_eungam_loop_end(self, ed: pd.DataFrame) -> pd.DataFrame:
+        """응암순환 종료 지점을 별도 노드로 분리한다.
+
+        구산에서 온 열차는 응암에 도착한 뒤 새절 방향으로 빠져나간다.
+        그래서 '구산 -> 응암 -> 역촌' 을 한 번에 탈 수 없는데, 노드를 하나로 두면
+        그래프상 환승 없이 이어져 존재하지 않는 경로가 추천된다.
+
+            구산 -> 6_응암@eungam_loop -> 새절     (순환을 마치고 본선 복귀)
+            새절 -> 6_응암             -> 역촌     (본선에서 순환 진입)
+
+        두 노드 사이는 build_transfer_edges 에서 재승차 환승 엣지로 잇는다.
+        """
+        m_in = (ed["from_node"] == "6_구산") & (ed["to_node"] == "6_응암")
+        if not m_in.any():
+            self.notes.append("응암순환 분리: '6_구산 -> 6_응암' 엣지를 찾지 못해 건너뜀")
+            return ed
+        ed.loc[m_in, "to_node"] = EUNGAM_LOOP_END_NODE
+        ed.loc[m_in, "to_branch"] = "eungam_loop"
+
+        # 응암 -> 새절 (본선 복귀)은 순환 종료 노드에서 출발해야 한다.
+        m_out = (ed["from_node"] == "6_응암") & (ed["to_node"] == "6_새절")
+        ed.loc[m_out, "from_node"] = EUNGAM_LOOP_END_NODE
+        ed.loc[m_out, "from_branch"] = "eungam_loop"
+        ed.loc[m_out, "is_bidirectional"] = 0
+
+        # 새절 -> 응암 (본선에서 순환 진입)은 본선 응암으로 들어온다. 그대로 둔다.
+        n_in, n_out = int(m_in.sum()), int(m_out.sum())
+        self.notes.append(
+            "응암순환 종료 노드 분리: 구산->%s %d개, %s->새절 %d개 "
+            "(구산->응암->역촌 직통 차단)"
+            % (EUNGAM_LOOP_END_NODE, n_in, EUNGAM_LOOP_END_NODE, n_out))
+        return ed
 
     def _cross_check_distance(self, path: Path, edges: pd.DataFrame) -> None:
         try:
@@ -439,7 +484,38 @@ class RouteGraphBuilder:
                                        + agg["volume_penalty_min"]).round(3)
         agg["edge_type"] = "transfer"
         agg["is_bidirectional"] = 1
+        agg = self._add_eungam_reboard_edge(agg, ride)
         return agg, tip
+
+    def _add_eungam_reboard_edge(self, agg: pd.DataFrame, ride: pd.DataFrame):
+        """응암순환 종료 노드 -> 본선 응암 재승차 엣지.
+
+        원본 환승 데이터에는 같은 역 안에서 열차를 다시 타는 경우가 없다.
+        하지만 구산에서 온 승객이 역촌 방향으로 가려면 응암에서 내려 다음 열차를
+        기다려야 하므로, 이 대기를 환승으로 모델링해야 한다.
+        승강장 이동이 없으므로 도보 시간은 짧게 잡는다(EUNGAM_REBOARD_MIN).
+        **단방향이다.** 본선 응암에서 순환 종료 노드로 가는 이동은 존재하지 않는다.
+        """
+        nodes = set(ride["from_node"]) | set(ride["to_node"])
+        if EUNGAM_LOOP_END_NODE not in nodes or "6_응암" not in nodes:
+            self.notes.append("응암 재승차 엣지: 노드가 없어 건너뜀")
+            return agg
+        row = {
+            "from_node": EUNGAM_LOOP_END_NODE, "to_node": "6_응암",
+            "station_name": "응암", "from_line": "6", "to_line": "6",
+            "transfer_time_min": EUNGAM_REBOARD_MIN,
+            "transfer_time_min_best": EUNGAM_REBOARD_MIN,
+            "n_patterns": 1, "is_branch_transfer": 1,
+            "weekday_volume": np.nan, "volume_penalty_min": 0.0,
+            "transfer_penalty_min": EUNGAM_REBOARD_MIN,
+            "edge_type": "transfer", "is_bidirectional": 0,
+        }
+        out = pd.concat([agg, pd.DataFrame([row])], ignore_index=True)
+        self.notes.append(
+            "응암 재승차 환승 엣지 추가: %s -> 6_응암 (%.1f분, 단방향). "
+            "구산에서 온 승객이 역촌 방향으로 가려면 응암에서 다음 열차를 기다린다."
+            % (EUNGAM_LOOP_END_NODE, EUNGAM_REBOARD_MIN))
+        return out
 
     # ---------- 3. 연결성 검증 ----------
     @staticmethod

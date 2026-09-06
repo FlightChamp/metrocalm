@@ -33,6 +33,10 @@ from pathlib import Path
 import pandas as pd
 
 ORIGIN_PREFIX = "V_ORIGIN_"
+
+# 환승 후 다음 노선 대기시간의 상한(분).
+# 심야처럼 배차가 매우 긴 시간대에 대기시간이 경로 점수를 지배하지 않게 막는다.
+MAX_TRANSFER_WAIT_MIN = 12.0
 DEST_PREFIX = "V_DEST_"
 
 
@@ -46,6 +50,92 @@ def load_scorer_class(root: Path):
             spec.loader.exec_module(mod)
             return mod
     raise FileNotFoundError("09_route_scoring_prototype.py 를 찾을 수 없습니다.")
+
+
+_HEADWAY_CACHE: dict = {}
+
+
+def load_headway(root: Path):
+    """30분 bin 평균 배차간격 -> 환승 대기시간 조회표.
+
+    station 단위를 우선 쓰고, 없거나 미운행이면 line 단위로 내려간다.
+    최초 승차 전 대기시간에는 쓰지 않는다(이번 MVP 범위 밖).
+    """
+    key = str(Path(root).resolve())
+    if key in _HEADWAY_CACHE:
+        return _HEADWAY_CACHE[key]
+
+    def _load(name):
+        base = Path(root) / "data" / "marts"
+        for ext in (".parquet", ".csv.gz", ".csv"):
+            q = base / (name + ext)
+            if q.exists():
+                return pd.read_parquet(q) if ext == ".parquet" else pd.read_csv(q)
+        return None
+
+    st = _load("headway_station_30min")
+    ln = _load("headway_line_30min")
+    station_map, line_map = {}, {}
+    if st is not None:
+        ok = st[st["is_operating"] == 1] if "is_operating" in st.columns else st
+        for r in ok.itertuples():
+            if pd.isna(r.expected_wait_min):
+                continue
+            station_map[(str(r.line_id), r.station_name, r.direction,
+                         r.day_type, r.time_bin)] = float(r.expected_wait_min)
+    if ln is not None:
+        col = ("avg_expected_wait_min" if "avg_expected_wait_min" in ln.columns
+               else "expected_wait_min")
+        for r in ln.itertuples():
+            v = getattr(r, col, None)
+            if v is None or pd.isna(v):
+                continue
+            line_map[(str(r.line_id), r.direction, r.day_type, r.time_bin)] = float(v)
+    out = {"station": station_map, "line": line_map,
+           "available": bool(station_map or line_map)}
+    _HEADWAY_CACHE[key] = out
+    return out
+
+
+def expected_wait(headway: dict, line, station, direction, day_type, time_bin):
+    """(노선, 역, 방향, 요일유형, 시간대) 예상 대기시간(분). 없으면 None."""
+    if not headway or not headway.get("available") or not direction:
+        return None
+    v = headway["station"].get((str(line), station, direction, day_type, time_bin))
+    if v is None:
+        v = headway["line"].get((str(line), direction, day_type, time_bin))
+    if v is None:
+        return None
+    return round(min(float(v), MAX_TRANSFER_WAIT_MIN), 1)
+
+
+def apply_transfer_wait(ev: dict, headway: dict, day_type: str, time_bin: str):
+    """환승 후 다음 노선 승차 전 예상 대기시간을 경로에 더한다.
+
+    **최초 승차 전 대기시간은 더하지 않는다.** 사용자가 승강장에 도착하는 시점을
+    알 수 없어 출발 시각 입력의 의미가 흐려지기 때문이다.
+    환승이 발생한 경우에만, 갈아탄 노선의 배차간격으로 기대 대기시간을 계산한다.
+    """
+    segs = ev.get("segments") or []
+    total = 0.0
+    for i, sg in enumerate(segs):
+        if sg.get("kind") != "transfer":
+            continue
+        nxt = segs[i + 1] if i + 1 < len(segs) else None
+        if not nxt or nxt.get("kind") != "ride":
+            continue
+        w = expected_wait(headway, nxt.get("line"), nxt.get("from"),
+                          nxt.get("direction"), day_type, time_bin)
+        sg["wait_min"] = w
+        if w:
+            total += w
+    ev["transfer_wait_min"] = round(total, 1)
+    # 대기를 더하기 '전' 값이 승차+환승도보 시간이다. 여기서 또 빼면 이중 차감이 된다.
+    ev["ride_time_min"] = round(ev["actual_time_min"], 1)
+    if total:
+        ev["actual_time_min"] = round(ev["actual_time_min"] + total, 2)
+        ev["perceived_time_min"] = round(ev["perceived_time_min"] + total, 2)
+    return ev
 
 
 def load_display_master(root: Path) -> pd.DataFrame:
@@ -69,6 +159,25 @@ def station_of(node: str) -> str:
 
 def line_of(node: str) -> str:
     return node.split("_", 1)[0]
+
+
+def has_station_revisit(path: list[str]) -> bool:
+    """같은 역을 떨어진 위치에서 다시 지나는 경로인지 본다.
+
+    6호선에서 '구산 -> 응암(순환끝) -> 새절 -> 응암(본선) -> 역촌' 같은 U턴이 생긴다.
+    새절에서 반대 방향 열차로 갈아타는 셈인데 그래프에는 비용이 없어서, 배차가 긴
+    시간대에는 정직한 재승차 환승보다 싸게 나온다.
+    분기역의 계통 환승(강동->강동, 성수->성수)은 **연속**이므로 허용한다.
+    """
+    names = [station_of(n) for n in path if not is_virtual(n)]
+    seen, prev = set(), None
+    for nm in names:
+        if nm != prev:
+            if nm in seen:
+                return True
+            seen.add(nm)
+        prev = nm
+    return False
 
 
 def is_virtual(node: str) -> bool:
@@ -262,22 +371,28 @@ def find_route_by_station(scorer, display: pd.DataFrame,
         scorer.adj = orig_adj
         scorer.nodes = orig_nodes
 
-    seen, raw = set(), []
+    seen, raw, n_revisit = set(), [], 0
     for p in paths_t + paths_c:
         real = tuple(n for n in p if not is_virtual(n))
         if len(real) < 2 or real in seen:
             continue
         seen.add(real)
+        if has_station_revisit(list(real)):
+            n_revisit += 1
+            continue
         raw.append(list(real))
     if not raw:
         return {"ok": False, "reason": "프로젝트 범위 내에서 연결되는 경로가 없습니다."}
 
+    headway = load_headway(getattr(scorer, "root", Path(".")))
     cands = []
     for p in raw:
         ev = scorer.evaluate(p)
         ev["segments"] = describe_path(scorer, p)
         ev["boarding_line"] = line_of(p[0])
         ev["alighting_line"] = line_of(p[-1])
+        # 환승 대기시간을 더한 뒤 점수를 매긴다(대기가 순위에 반영되어야 한다).
+        apply_transfer_wait(ev, headway, scorer.day_type, scorer.time_bin)
         cands.append(ev)
 
     from importlib import import_module  # noqa
@@ -326,6 +441,7 @@ def find_route_by_station(scorer, display: pd.DataFrame,
             time_alt = None
 
     return {"ok": True,
+            "n_revisit_filtered": n_revisit,
             "origin_station": origin_station_name,
             "destination_station": destination_station_name,
             "preference_mode": preference_mode,
