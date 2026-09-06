@@ -258,6 +258,18 @@ L2 baseline 의 미관측 역 coverage 는 **0.00** 이다. 학습에 없던 역
 
 ---
 
+## 11-1. 파생 사용처 — 경로 스코어링
+
+이 모델의 출력은 경로 추천의 **체감시간 환산**에 쓰인다.
+
+```
+perceived_time = travel_time × (1 + 0.5 × max(0, 기대혼잡도 − 80) / 100)
+edge_cost      = perceived_time + transfer_penalty + event_risk
+```
+
+v1 에서는 여기에 **환승 후 대기시간**(30분 평균 배차간격 / 2, 상한 12분)이 더해진다.
+최초 승차 전 대기는 더하지 않는다.
+
 ## 12. 재현
 
 ```bash

@@ -13,9 +13,6 @@ scikit-learn>=1.4      # PR-AUC, precision-recall curve
 lightgbm>=4.3
 shap>=0.45             # Model-2 설명가능성
 
-# --- 그래프 ---
-networkx>=3.2
-
 # --- 검증 ---
 pandera>=0.20          # 스키마 검증
 pytest>=8.0

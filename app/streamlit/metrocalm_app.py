@@ -87,38 +87,38 @@ DAY_TYPE_KO = {"weekday": "평일", "saturday": "토요일", "sunday": "일요�
 # ---------------------------------------------------------------------------
 SERVICE_PATTERNS = [
     {"label": "1호선", "line": "1", "scope": "main",
-     "directions": [("청량리 방면", "up", "서울역", "청량리"),
-                    ("서울역 방면", "down", "청량리", "서울역")]},
+     "directions": [("서울역 방면", "down", "청량리", "서울역"),
+                    ("청량리 방면", "up", "서울역", "청량리")]},
     {"label": "2호선 본선", "line": "2", "scope": "line2_main",
      "directions": [("내선순환", "inner", "시청", "충정로"),
                     ("외선순환", "outer", "시청", "을지로입구")]},
     {"label": "2호선 성수지선", "line": "2", "scope": "seongsu",
-     "directions": [("성수 방면", "inner", "신설동", "성수"),
-                    ("신설동 방면", "outer", "성수", "신설동")]},
+     "directions": [("신설동 방면", "outer", "성수", "신설동"),
+                    ("성수 방면", "inner", "신설동", "성수")]},
     {"label": "2호선 신정지선", "line": "2", "scope": "sinjeong",
      "directions": [("까치산 방면", "inner", "신도림", "까치산"),
                     ("신도림 방면", "outer", "까치산", "신도림")]},
     {"label": "3호선", "line": "3", "scope": "main",
-     "directions": [("지축 방면", "up", "오금", "지축"),
-                    ("오금 방면", "down", "지축", "오금")]},
+     "directions": [("오금 방면", "down", "지축", "오금"),
+                    ("지축 방면", "up", "오금", "지축")]},
     {"label": "4호선", "line": "4", "scope": "main",
-     "directions": [("불암산 방면", "up", "남태령", "불암산"),
-                    ("남태령 방면", "down", "불암산", "남태령")]},
+     "directions": [("남태령 방면", "down", "불암산", "남태령"),
+                    ("불암산 방면", "up", "남태령", "불암산")]},
     {"label": "5호선 방화–하남검단산", "line": "5", "scope": "hanam",
-     "directions": [("방화 방면", "up", "하남검단산", "방화"),
-                    ("하남검단산 방면", "down", "방화", "하남검단산")]},
+     "directions": [("하남검단산 방면", "down", "방화", "하남검단산"),
+                    ("방화 방면", "up", "하남검단산", "방화")]},
     {"label": "5호선 방화–마천", "line": "5", "scope": "macheon",
-     "directions": [("방화 방면", "up", "마천", "방화"),
-                    ("마천 방면", "down", "방화", "마천")]},
+     "directions": [("마천 방면", "down", "방화", "마천"),
+                    ("방화 방면", "up", "마천", "방화")]},
     {"label": "6호선", "line": "6", "scope": "main",
-     "directions": [("신내 → 응암 방면", "up", "신내", "응암"),
-                    ("응암순환 → 신내 방면", "down", "응암", "신내")]},
+     "directions": [("응암순환 → 신내 방면", "down", "응암", "신내"),
+                    ("신내 → 응암 방면", "up", "신내", "응암")]},
     {"label": "7호선", "line": "7", "scope": "main",
-     "directions": [("장암 방면", "up", "온수", "장암"),
-                    ("온수 방면", "down", "장암", "온수")]},
+     "directions": [("온수 방면", "down", "장암", "온수"),
+                    ("장암 방면", "up", "온수", "장암")]},
     {"label": "8호선", "line": "8", "scope": "main",
-     "directions": [("암사역사공원 방면", "up", "모란", "암사역사공원"),
-                    ("모란 방면", "down", "암사역사공원", "모란")]},
+     "directions": [("모란 방면", "down", "암사역사공원", "모란"),
+                    ("암사역사공원 방면", "up", "모란", "암사역사공원")]},
 ]
 
 # 2호선 지선 전용 역 (본선 순서에 섞이면 안 된다)
@@ -1207,7 +1207,6 @@ def page_congestion_station():
                                  values="congestion_median").sort_index()
             piv.columns = [DIRECTION_KO.get(c, c) for c in piv.columns]
             congestion_line_chart(piv, 320)
-            st.caption("스냅샷 11개의 중앙값입니다. 특정 날짜의 실측값이 아닙니다.")
 
     st.divider()
     st.subheader("평일 최혼잡 구간 Top 10")
@@ -1367,9 +1366,6 @@ def page_congestion_line():
                    gridcolor="#EEF0F2", rangemode="tozero"))
     st.plotly_chart(fig, width="stretch",
                     config={"displayModeBar": False, "scrollZoom": False})
-    st.caption("%s → %s 순서입니다. 스냅샷 11개의 중앙값 기반 기대 혼잡도이며, "
-               "실시간 값도 특정 날짜의 실측값도 아닙니다."
-               % (d["표시역명"].iloc[0], d["표시역명"].iloc[-1]))
 
     c = st.columns(3)
     top = d.loc[d["congestion_median"].idxmax()]
@@ -1496,7 +1492,7 @@ def page_transfer():
                                               errors="coerce"), 1).values,
     })
     st.table(round1(view).reset_index(drop=True))
-    st.caption("위치는 '호차-문' 입니다. 예: 2-1 = 2번째 칸 1번 문")
+    st.caption("승하차 위치는 호차-문 입니다. (2-1 = 2번째 칸 1번 문)")
     te = load_mart("transfer_edge_mart")
     if te is not None:
         row = te[(te["station_name"] == stn) & (te["from_line"].astype(str) == fl)

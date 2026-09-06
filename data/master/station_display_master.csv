@@ -158,7 +158,7 @@
 157,개롱,개롱,개롱역,5,5_개롱,5:macheon_branch,False,False,,,1,False
 158,거여,거여,거여역,5,5_거여,5:macheon_branch,False,False,,,1,False
 159,마천,마천,마천역,5,5_마천,5:macheon_branch,False,False,,,1,False
-160,응암,응암,응암역,6,6_응암,6:main,False,False,,,1,True
+160,응암,응암,응암역,6,6_응암;6_응암@eungam_loop,6:main,False,False,,,1,True
 161,역촌,역촌,역촌역,6,6_역촌,6:main,False,False,,,1,False
 162,독바위,독바위,독바위역,6,6_독바위,6:main,False,False,,,1,False
 163,구산,구산,구산역,6,6_구산,6:main,False,False,,,1,False
