@@ -1,0 +1,79 @@
+# =====================================================================
+#  MetroCalm .gitignore
+#  원칙: 코드·마스터·리포트는 커밋한다. 원본 데이터와 중간 산출물은 제외한다.
+#        마스터(data/master)는 프로젝트 정의의 일부이므로 반드시 포함한다.
+# =====================================================================
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# ---------- 가상환경 ----------
+.venv/
+venv/
+env/
+.conda/
+
+# ---------- 환경변수·비밀 ----------
+.env
+.env.*
+*.pem
+*.key
+secrets.*
+credentials.*
+
+# ---------- 원본 데이터 (재배포 제약, 약 143MB) ----------
+# 서울교통공사 공공데이터. 출처에서 직접 내려받아 data/raw 아래에 두고 재현한다.
+data/raw/**
+!data/raw/**/.gitkeep
+
+# ---------- 파이프라인 중간·최종 산출물 (스크립트로 재생성, 약 103MB) ----------
+data/staging/**
+data/interim/**
+data/marts/**
+!data/staging/.gitkeep
+!data/interim/.gitkeep
+!data/marts/.gitkeep
+
+# ---------- 마스터는 커밋한다 (프로젝트 정의) ----------
+!data/master/**
+
+# ---------- 학습된 모델 (약 33MB, 재학습 가능) ----------
+models/**
+!models/.gitkeep
+
+# ---------- 리포트: 문서·표·그림은 커밋, 대용량 원시 결과는 제외 ----------
+reports/**/*.parquet
+reports/**/*.csv.gz
+# 경로 평가 상세는 행 수가 많아 제외한다(요약 CSV 는 커밋)
+reports/route/route_eval_cases*.csv
+reports/route/route_eval_detail*.csv
+
+# ---------- 실험 추적 ----------
+mlruns/
+.mlflow/
+
+# ---------- OS / 에디터 ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*~
+
+# ---------- 임시 ----------
+*.log
+*.tmp
+tmp/
+scratch/
