@@ -25,6 +25,7 @@ import re
 import sys
 from datetime import date, datetime, time as dtime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -382,9 +383,16 @@ def line_badges(lines: str) -> str:
 # --------------------------------------------------------------------------
 # 상태
 # --------------------------------------------------------------------------
+KST = ZoneInfo("Asia/Seoul")
+
+
 def _now_defaults():
-    """초기 접속·새로고침 시 날짜/시각을 현재 시각으로 맞춘다(30분 단위 내림)."""
-    now = datetime.now()
+    """초기 접속·새로고침 시 날짜/시각을 현재 시각으로 맞춘다(30분 단위 내림).
+
+    배포 컨테이너의 TZ 는 UTC 다. 고정하지 않으면 서울 기준 접속 시각과
+    기본값이 9시간 어긋난다.
+    """
+    now = datetime.now(KST)
     return now.date(), dtime(now.hour, 0 if now.minute < 30 else 30)
 
 
@@ -682,7 +690,12 @@ def transfer_tip(station: str, from_line: str, to_line: str,
                 return str(int(float(v)))
             except (TypeError, ValueError):
                 return str(v).strip()
-        return "%s호차 %s번 문" % (_n(car), _n(door))
+        # 원본에 '모든 호차'/'모든 문' 으로 적힌 조합이 있다(예: 성수 본선-성수지선).
+        # 접미사를 그대로 붙이면 '모든 호차호차' 가 되므로 원문을 그대로 쓴다.
+        c, d = _n(car), _n(door)
+        c = c if c.startswith("모든") else "%s호차" % c
+        d = d if d.startswith("모든") else "%s번 문" % d
+        return "%s %s" % (c, d)
 
     return {"alight": _pos(r["alight_car"], r["alight_door"]),
             "board": _pos(r["board_car"], r["board_door"]),
@@ -1481,7 +1494,10 @@ def page_transfer():
                 return str(int(float(v)))
             except (TypeError, ValueError):
                 return str(v).strip()
-        return "%s-%s" % (_n(car), _n(door))
+        c, d = _n(car), _n(door)
+        if c.startswith("모든") or d.startswith("모든"):
+            return "%s %s" % (c, d)
+        return "%s-%s" % (c, d)
 
     view = pd.DataFrame({
         "타고 온 방면": sub3["arrive_toward"].values,
