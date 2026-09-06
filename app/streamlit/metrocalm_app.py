@@ -21,6 +21,7 @@ metrocalm_app.py — MetroCalm 쾌적 경로 추천
 
 from __future__ import annotations
 
+import re
 import sys
 from datetime import date, datetime, time as dtime
 from pathlib import Path
@@ -148,18 +149,18 @@ st.markdown(f"""
   /* 선택한 역의 [출발역/도착역으로 설정] 버튼: 네이비 바탕 + 금색 글씨 */
   .st-key-btn_set_origin button, .st-key-btn_set_dest button,
   div[class*="st-key-btn_set_"] button {{
-      background-color: {PRIMARY} !important;
-      border: 1px solid {PRIMARY} !important;
-      color: {SECONDARY} !important;
+      background-color: {SECONDARY} !important;
+      border: 1px solid {SECONDARY} !important;
+      color: #FFFFFF !important;
       font-weight: 700;
   }}
   .st-key-btn_set_origin button:hover, .st-key-btn_set_dest button:hover,
   div[class*="st-key-btn_set_"] button:hover {{
-      background-color: #013C72 !important; border-color: #013C72 !important;
-      color: {SECONDARY} !important;
+      background-color: #A0855F !important; border-color: #A0855F !important;
+      color: #FFFFFF !important;
   }}
   .st-key-btn_set_origin button p, .st-key-btn_set_dest button p,
-  div[class*="st-key-btn_set_"] button p {{ color: {SECONDARY} !important; }}
+  div[class*="st-key-btn_set_"] button p {{ color: #FFFFFF !important; }}
 
   /* ---------- 본문 버튼 ---------- */
   div.stButton > button[kind="primary"] {{
@@ -200,9 +201,21 @@ EVENT_NAME_FIX = {
 
 
 def ko_event_name(v) -> str:
+    """이벤트명을 한글화하고 **연도를 맨 앞으로** 옮긴다.
+
+    '서울세계불꽃축제 2022' / '동국대 2023 논술' 처럼 연도 위치가 제각각이면
+    표에서 읽기 어렵다. '2022 서울세계불꽃축제' / '2023 동국대 논술' 로 통일한다.
+    """
     t = str(v)
     for a, b in EVENT_NAME_FIX.items():
         t = t.replace(a, b)
+    m = re.search(r"(?<!\d)(19|20)\d{2}(?!\d)", t)
+    if m:
+        year = m.group(0)
+        rest = (t[:m.start()] + t[m.end():]).strip()
+        rest = re.sub(r"\s{2,}", " ", rest)
+        if rest:
+            t = "%s %s" % (year, rest)
     return t
 
 
@@ -351,9 +364,9 @@ LABEL_FONT_SCALE = 0.95
 #   간격 = 데이터 좌표 몫(확대 시 커짐) + 화면 픽셀 몫(배율 무관 고정).
 #   데이터 몫을 줄이고 고정 몫을 두면 초기 화면 간격은 유지되면서
 #   확대했을 때 지나치게 벌어지지 않는다.
-LABEL_GAP_NORMAL = 3       # 일반역 데이터 몫
-LABEL_GAP_TRANSFER = 4     # 환승역 데이터 몫
-LABEL_GAP_FIXED_PX = 2     # 화면 고정 몫(빈 줄 높이)
+LABEL_GAP_NORMAL = 2       # 일반역 데이터 몫
+LABEL_GAP_TRANSFER = 3     # 환승역 데이터 몫
+LABEL_GAP_FIXED_PX = 1     # 화면 고정 몫(빈 줄 높이)
 
 # 역명 라벨을 마커 아래로 내리는 거리(캔버스 좌표 단위).
 # 화면 픽셀이 아니라 데이터 좌표라, 축소하면 간격이 좁아지고 확대하면 넓어진다.
@@ -697,13 +710,12 @@ def render_timeline(segs):
                     rows.append("하차 위치: %s" % _esc(tip["alight"]))
                 if tip["board"]:
                     rows.append("승차 위치: %s" % _esc(tip["board"]))
-                note = ("%s 하차 · %s 승차 기준. "
+                note = ("%s 하차 · %s 승차 기준"
                         % (_esc(tip["arrive_toward"]), _esc(tip["depart_toward"]))
                         if tip.get("direction_matched") else "")
-                extra = ('<div class="mc-tf-b">%s</div>'
-                         '<div class="mc-note">%s객차별 혼잡도 데이터가 아니라 '
-                         '환승 동선상 유리한 위치입니다.</div>'
-                         % (" · ".join(rows), note))
+                extra = ('<div class="mc-tf-b">%s</div>' % " · ".join(rows))
+                if note:
+                    extra += '<div class="mc-note">%s</div>' % note
             html.append(
                 '<div class="mc-tf"><div class="mc-tf-h">↓ %s역 환승</div>'
                 '<div class="mc-tf-b">%s</div>%s</div>'
@@ -841,6 +853,35 @@ def page_route():
         st.session_state["route_result"] = None
         st.session_state["route_fallback"] = None
 
+    # ---------- 경로 계산 ----------
+    #  지도를 그리기 **전에** 계산해야 [경로 검색] 한 번으로 하이라이트가 뜬다.
+    #  계산 뒤에 그리면 그 실행에서는 이전 결과(또는 없음)로 그려져 두 번 눌러야 한다.
+    o = st.session_state["origin_station_key"]
+    d_ = st.session_state["destination_station_key"]
+    ready = bool(o and d_ and o != d_)
+
+    if ready and do_search:
+        dow = pd.Timestamp(st.session_state["q_date"]).dayofweek
+        day_type = "saturday" if dow == 5 else ("sunday" if dow == 6 else "weekday")
+        hhmm = "%02d:%02d" % (st.session_state["q_time"].hour,
+                              st.session_state["q_time"].minute)
+        sr = sr_module()
+        result, fallback = None, False
+        with st.spinner("과거 혼잡도 패턴을 분석하여 최적의 대안 경로를 탐색 중입니다..."):
+            try:
+                rs = get_scorer(day_type, hhmm, str(st.session_state["q_date"]))
+                result = sr.find_route_by_station(rs, load_display_master(), o, d_,
+                                                  st.session_state["q_mode"])
+                if not result.get("ok"):
+                    result = None
+            except Exception:
+                result = None
+            if result is None:
+                result = fallback_route(o, d_)
+                fallback = bool(result)
+        st.session_state["route_result"] = result
+        st.session_state["route_fallback"] = fallback
+
     # ---------- 오른쪽 노선도 ----------
     with right:
         if bundle is None:
@@ -862,55 +903,24 @@ def page_route():
             except Exception:
                 pass
 
-    # ---------- 자동 계산 ----------
-    o = st.session_state["origin_station_key"]
-    d_ = st.session_state["destination_station_key"]
-
+    # ---------- 결과 ----------
     st.divider()
-    if not (o and d_):
-        st.caption("출발역과 도착역을 선택한 뒤 [경로 검색] 을 누르세요.")
-        return
-    if o == d_:
-        st.info("출발역과 도착역이 같습니다. 다른 역을 선택해 주세요.")
+    if not ready:
+        if o and d_ and o == d_:
+            st.info("출발역과 도착역이 같습니다. 다른 역을 선택해 주세요.")
+        else:
+            st.caption("출발역과 도착역을 선택한 뒤 [경로 검색] 을 누르세요.")
         return
 
-    if not do_search:
-        if st.session_state.get("route_result"):
-            result = st.session_state["route_result"]
-            fallback = bool(st.session_state.get("route_fallback"))
-            _render_route_result(result, fallback, o, d_)
+    result = st.session_state.get("route_result")
+    if result is None:
+        if do_search:
+            st.info("현재 조건에서는 프로젝트 범위 내 경로를 찾지 못했습니다. "
+                    "다른 구간이나 시각을 선택해 주세요.")
         else:
             st.caption("[경로 검색] 을 누르면 결과가 표시됩니다.")
         return
-
-    dow = pd.Timestamp(st.session_state["q_date"]).dayofweek
-    day_type = "saturday" if dow == 5 else ("sunday" if dow == 6 else "weekday")
-    hhmm = "%02d:%02d" % (st.session_state["q_time"].hour,
-                          st.session_state["q_time"].minute)
-
-    sr = sr_module()
-    result, fallback = None, False
-    with st.spinner("과거 혼잡도 패턴을 분석하여 최적의 대안 경로를 탐색 중입니다..."):
-        try:
-            rs = get_scorer(day_type, hhmm, str(st.session_state["q_date"]))
-            result = sr.find_route_by_station(rs, load_display_master(), o, d_,
-                                              st.session_state["q_mode"])
-            if not result.get("ok"):
-                result = None
-        except Exception:
-            result = None
-        if result is None:
-            result = fallback_route(o, d_)
-            fallback = bool(result)
-
-    if not result:
-        st.session_state["route_result"] = None
-        st.info("현재 조건에서는 프로젝트 범위 내 경로를 찾지 못했습니다. "
-                "다른 구간이나 시각을 선택해 주세요.")
-        return
-    st.session_state["route_result"] = result
-    st.session_state["route_fallback"] = fallback
-    _render_route_result(result, fallback, o, d_)
+    _render_route_result(result, bool(st.session_state.get("route_fallback")), o, d_)
 
 
 def _render_route_result(result, fallback, o, d_):
@@ -1396,7 +1406,7 @@ MetroCalm 은 사용자에게 **역 단위 입력**을 제공하지만, 내부 �
 # --------------------------------------------------------------------------
 def main():
     st.sidebar.title("🚇 MetroCalm")
-    st.sidebar.caption("서울 지하철 혼잡도 기반 쾌적 경로 추천 시스템")
+    st.sidebar.caption("서울 지하철 혼잡도 기반  \n쾌적 경로 추천 시스템")
     if not st.session_state.get("menu"):
         st.session_state["menu"] = MENUS[0]
     for m in MENUS:
