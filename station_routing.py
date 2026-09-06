@@ -1,0 +1,351 @@
+"""
+station_routing.py
+==================
+**역 단위(station-level)** 경로 탐색. 사용자 입력과 내부 그래프를 분리한다.
+
+원칙
+----
+MetroCalm 은 사용자에게 역 단위 입력을 제공하지만, 내부 그래프와 혼잡도 계산은
+호선별 station_uid 단위로 유지한다. 환승역에서 어떤 노선을 처음 탈지는 사용자가
+고정하지 않는 한 알고리즘이 후보로 비교하며, **최초 승차 노선 선택은 환승으로
+계산하지 않는다.**
+
+가상 노드
+---------
+사용자가 "서울역"을 고르면 1호선/4호선 노드를 모두 출발 후보로 연다.
+
+    V_ORIGIN_서울역 --(origin_access, 0분)--> 1_서울역
+    V_ORIGIN_서울역 --(origin_access, 0분)--> 4_서울역
+    2_강남 --(destination_exit, 0분)--> V_DEST_강남
+
+origin_access / destination_exit 은 **환승 횟수에 포함하지 않는다.** 기본 penalty 0.
+추후 역 출입구·승강장 정보가 생기면 access penalty 를 추가할 수 있다.
+
+이렇게 하면 "서울역 1호선 → 4호선 환승" 으로 시작하는 경로가 나오지 않는다.
+가상 노드에서 4호선으로 바로 진입하는 비용이 0 이므로 환승 경로가 지배당한다.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+import pandas as pd
+
+ORIGIN_PREFIX = "V_ORIGIN_"
+DEST_PREFIX = "V_DEST_"
+
+
+def load_scorer_class(root: Path):
+    for cand in (root / "scripts" / "09_route_scoring_prototype.py",
+                 root / "09_route_scoring_prototype.py",
+                 Path(__file__).with_name("09_route_scoring_prototype.py")):
+        if cand.exists():
+            spec = importlib.util.spec_from_file_location("rs09", cand)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod
+    raise FileNotFoundError("09_route_scoring_prototype.py 를 찾을 수 없습니다.")
+
+
+def load_display_master(root: Path) -> pd.DataFrame:
+    p = root / "data" / "master" / "station_display_master.csv"
+    if not p.exists():
+        raise FileNotFoundError(
+            "station_display_master.csv 가 없습니다. 12_build_display_masters.py 실행 필요.")
+    return pd.read_csv(p)
+
+
+def candidates_of(display: pd.DataFrame, station_key: str) -> list[str]:
+    row = display[display["station_key"] == station_key]
+    if row.empty:
+        return []
+    return [x for x in str(row.iloc[0]["candidate_station_uids"]).split(";") if x]
+
+
+def station_of(node: str) -> str:
+    return node.split("_", 1)[1].split("@")[0]
+
+
+def line_of(node: str) -> str:
+    return node.split("_", 1)[0]
+
+
+def is_virtual(node: str) -> bool:
+    return node.startswith(ORIGIN_PREFIX) or node.startswith(DEST_PREFIX)
+
+
+# --------------------------------------------------------------------------
+# 노선별 방면 라벨. 프로젝트 구간의 종점을 기준으로 한다.
+# 임의 추측이 아니라 route_edge_mart 의 direction / branch_code 에서 계산한다.
+DIRECTION_LABEL = {
+    ("1", "main", "up"): "청량리 방면", ("1", "main", "down"): "서울역 방면",
+    ("2", "main", "inner"): "내선순환", ("2", "main", "outer"): "외선순환",
+    ("2", "seongsu_branch", "inner"): "성수 방면",
+    ("2", "seongsu_branch", "outer"): "신설동 방면",
+    ("2", "seongsu_branch_east", "inner"): "성수 방면",
+    ("2", "seongsu_branch_east", "outer"): "신설동 방면",
+    ("2", "sinjeong_branch", "inner"): "까치산 방면",
+    ("2", "sinjeong_branch", "outer"): "신도림 방면",
+    ("3", "main", "up"): "지축 방면", ("3", "main", "down"): "오금 방면",
+    ("4", "main", "up"): "불암산 방면", ("4", "main", "down"): "남태령 방면",
+    ("5", "main", "up"): "방화 방면", ("5", "main", "down"): "하남검단산 방면",
+    ("5", "macheon_branch", "up"): "방화 방면",
+    ("5", "macheon_branch", "down"): "마천 방면",
+    ("6", "main", "up"): "응암 방면", ("6", "main", "down"): "신내 방면",
+    ("6", "eungam_loop", "down"): "응암순환 방면",
+    ("7", "main", "up"): "장암 방면", ("7", "main", "down"): "온수 방면",
+    ("8", "main", "up"): "암사역사공원 방면", ("8", "main", "down"): "모란 방면",
+}
+
+
+def _edge_index(scorer):
+    """(from_node, to_node) -> 승차 엣지 메타. 방면/혼잡도 계산용."""
+    idx = getattr(scorer, "_edge_meta_index", None)
+    if idx is None:
+        idx = {}
+        for r in scorer.ride.itertuples():
+            idx[(r.from_node, r.to_node)] = {
+                "line": str(r.line_id),
+                "direction": r.direction if pd.notna(r.direction) else None,
+                "branch": getattr(r, "branch_code", "main"),
+                "congestion": float(r.congestion),
+                "time": float(r.travel_time_min),
+            }
+        scorer._edge_meta_index = idx
+    return idx
+
+
+def bound_label(line: str, branch: str, direction) -> str:
+    """종점 기준 방면 문구(예: '방화 방면'). 참고용으로만 보관한다.
+
+    화면에는 쓰지 않는다. 지선·순환 때문에 예외가 계속 늘고, 잘못 표기할 위험이 있다.
+    """
+    if not direction:
+        return ""
+    for b in (branch, "main"):
+        lab = DIRECTION_LABEL.get((str(line), b, direction))
+        if lab:
+            return lab
+    return ""
+
+
+def describe_path(scorer, path: list[str]) -> list[dict]:
+    """내부 노드를 사용자용 **구조화 segment** 로 바꾼다. station_uid 를 노출하지 않는다.
+
+    ride    : line, direction_label, from/to, station_count, duration_min,
+              max_congestion, stations(전체 정차역)
+    transfer: at, from_line, to_line, duration_min
+    """
+    real = [n for n in path if not is_virtual(n)]
+    if not real:
+        return []
+    emeta = _edge_index(scorer)
+    segs = []
+    cur = {"kind": "ride", "line": line_of(real[0]), "from": station_of(real[0]),
+           "stations": [station_of(real[0])], "n_stops": 0, "minutes": 0.0,
+           "max_congestion": 0.0, "dirs": [], "branches": []}
+
+    for u, v in zip(real, real[1:]):
+        e = next((x for x in scorer.adj.get(u, []) if x["to"] == v), None)
+        if e is None:
+            continue
+        if e["kind"] == "transfer":
+            cur["to"] = station_of(u)
+            segs.append(cur)
+            segs.append({"kind": "transfer", "at": station_of(u),
+                         "from_line": cur["line"], "to_line": line_of(v),
+                         "minutes": round(e["time"], 1)})
+            cur = {"kind": "ride", "line": line_of(v), "from": station_of(v),
+                   "stations": [station_of(v)], "n_stops": 0, "minutes": 0.0,
+                   "max_congestion": 0.0, "dirs": [], "branches": []}
+        else:
+            m = emeta.get((u, v), {})
+            cur["n_stops"] += 1
+            cur["minutes"] += float(e.get("time", 0.0))
+            c = m.get("congestion")
+            if c is not None and not pd.isna(c):
+                cur["max_congestion"] = max(cur["max_congestion"], float(c))
+            if m.get("direction"):
+                cur["dirs"].append(m["direction"])
+            cur["branches"].append(m.get("branch", "main"))
+            cur["stations"].append(station_of(v))
+    cur["to"] = station_of(real[-1])
+    segs.append(cur)
+
+    out = []
+    for sgm in segs:
+        if sgm["kind"] != "ride":
+            out.append(sgm)
+            continue
+        if sgm["n_stops"] == 0 and len(segs) > 1:
+            continue                      # 0정거장 구간은 표시하지 않는다
+        dirs = sgm.pop("dirs")
+        branches = sgm.pop("branches")
+        d = max(set(dirs), key=dirs.count) if dirs else None
+        b = max(set(branches), key=branches.count) if branches else "main"
+        sgm["direction"] = d
+        sgm["branch"] = b
+        # 방면 표기는 **경로상 바로 다음 역** 을 쓴다.
+        # 종점 기준(방화 방면 등)은 지선·순환에서 예외가 많고 오표기 위험이 있는데,
+        # 다음 역은 경로에서 직접 나오므로 추론이 개입하지 않는다.
+        stns = sgm.get("stations") or []
+        nxt = stns[1] if len(stns) >= 2 else None
+        sgm["next_station"] = nxt
+        # 1정거장 구간은 다음 역 = 도착역이라 '동묘앞 방면 신설동 → 동묘앞' 처럼
+        # 같은 역명이 두 번 나온다. 그 경우 방면 표기를 생략한다.
+        sgm["direction_label"] = ("%s 방면" % nxt) if (nxt and nxt != sgm["to"]) else ""
+        sgm["bound_label"] = bound_label(sgm["line"], b, d)   # 참고용(비표시)
+        sgm["minutes"] = round(sgm["minutes"], 1)
+        sgm["max_congestion"] = round(sgm["max_congestion"], 1)
+        out.append(sgm)
+    return out
+
+
+def segments_to_text(segs: list[dict]) -> list[str]:
+    """폴백/테스트용 텍스트. 화면은 타임라인 카드로 렌더링한다."""
+    out = []
+    for i, s in enumerate(segs):
+        if s["kind"] == "ride":
+            verb = "승차" if i == 0 else "탑승"
+            d = (" %s" % s["direction_label"]) if s.get("direction_label") else ""
+            out.append("%s에서 %s호선%s %s → %s (%d개 역)"
+                       % (s["from"], s["line"], d, verb, s["to"], s["n_stops"]))
+        else:
+            out.append("%s에서 %s호선으로 환승 (약 %.0f분)"
+                       % (s["at"], s["to_line"], s["minutes"]))
+    return out
+
+
+def find_route_by_station(scorer, display: pd.DataFrame,
+                          origin_station_name: str,
+                          destination_station_name: str,
+                          preference_mode: str = "calm",
+                          k: int = 5) -> dict:
+    """역 단위 입력으로 경로를 찾는다.
+
+    반환 dict:
+        ok, fastest, alternative, time_alternative, candidates, n_origin_nodes, ...
+    각 후보에는 segments(사용자 문구용)와 transfer_count 가 들어간다.
+    origin_access / destination_exit 은 환승으로 세지 않는다.
+    """
+    o_nodes = candidates_of(display, origin_station_name)
+    d_nodes = candidates_of(display, destination_station_name)
+    if not o_nodes or not d_nodes:
+        return {"ok": False, "reason": "역 정보를 찾을 수 없습니다."}
+    if origin_station_name == destination_station_name:
+        return {"ok": False, "reason": "출발역과 도착역이 같습니다."}
+
+    v_o = ORIGIN_PREFIX + origin_station_name
+    v_d = DEST_PREFIX + destination_station_name
+
+    orig_adj = scorer.adj
+    orig_nodes = scorer.nodes
+    aug = dict(orig_adj)
+    aug[v_o] = [{"to": n, "cost": 0.0, "time": 0.0, "cong": float("nan"),
+                 "event": 0.0, "kind": "origin_access"} for n in o_nodes if n in orig_nodes]
+    for n in d_nodes:
+        if n not in orig_nodes:
+            continue
+        aug[n] = list(aug.get(n, [])) + [
+            {"to": v_d, "cost": 0.0, "time": 0.0, "cong": float("nan"),
+             "event": 0.0, "kind": "destination_exit"}]
+    if not aug[v_o]:
+        return {"ok": False, "reason": "출발역이 그래프에 없습니다."}
+
+    try:
+        scorer.adj = aug
+        scorer.nodes = set(aug) | {e["to"] for lst in aug.values() for e in lst}
+        paths_t = scorer._yen(v_o, v_d, K=k, weight="time")
+        paths_c = scorer._yen(v_o, v_d, K=k, weight="cost")
+    finally:
+        scorer.adj = orig_adj
+        scorer.nodes = orig_nodes
+
+    seen, raw = set(), []
+    for p in paths_t + paths_c:
+        real = tuple(n for n in p if not is_virtual(n))
+        if len(real) < 2 or real in seen:
+            continue
+        seen.add(real)
+        raw.append(list(real))
+    if not raw:
+        return {"ok": False, "reason": "프로젝트 범위 내에서 연결되는 경로가 없습니다."}
+
+    cands = []
+    for p in raw:
+        ev = scorer.evaluate(p)
+        ev["segments"] = describe_path(scorer, p)
+        ev["boarding_line"] = line_of(p[0])
+        ev["alighting_line"] = line_of(p[-1])
+        cands.append(ev)
+
+    from importlib import import_module  # noqa
+    w = _MODE_WEIGHTS.get(preference_mode, _MODE_WEIGHTS["calm"])
+    for c in cands:
+        c["route_score"] = (w["actual"] * c["actual_time_min"]
+                            + w["perceived"] * c["perceived_time_min"]
+                            + w["max_cong"] * (c["max_congestion"] or 0)
+                            + w["tpen"] * c["transfer_penalty_min"]
+                            - w["seat"] * c["seat_chance_score"])
+    cands.sort(key=lambda c: c["route_score"])
+
+    # 다양성 필터 (directed edge 기준)
+    def edge_set(ev):
+        p = ev["path"]
+        return set(zip(p, p[1:]))
+    kept = []
+    for c in cands:
+        e = edge_set(c)
+        if all(_jaccard(e, edge_set(k2)) <= 0.65 for k2 in kept):
+            kept.append(c)
+        if len(kept) >= 4:
+            break
+    if not kept:
+        kept = cands[:1]
+
+    fastest = min(cands, key=lambda c: c["actual_time_min"])
+    alt = None
+    for c in kept:
+        if c["path"] == fastest["path"]:
+            continue
+        tl = c["actual_time_min"] - fastest["actual_time_min"]
+        cd = (fastest["max_congestion"] or 0) - (c["max_congestion"] or 0)
+        pe = c["perceived_time_min"] - fastest["perceived_time_min"]
+        if tl <= 15.0 and cd >= 15.0 and pe <= 5.0:
+            alt = dict(c)
+            alt["time_loss_vs_fastest"] = round(tl, 1)
+            alt["comfort_gain_vs_fastest"] = round(cd, 1)
+            break
+
+    time_alt = None
+    if alt is None:
+        try:
+            time_alt = scorer.time_alternative(kept[0]["path"])
+        except Exception:
+            time_alt = None
+
+    return {"ok": True,
+            "origin_station": origin_station_name,
+            "destination_station": destination_station_name,
+            "preference_mode": preference_mode,
+            "n_origin_nodes": len(aug[v_o]),
+            "n_destination_nodes": len([n for n in d_nodes if n in orig_nodes]),
+            "recommended": kept[0],
+            "fastest": fastest,
+            "alternative": alt,
+            "time_alternative": time_alt,
+            "candidates": kept}
+
+
+_MODE_WEIGHTS = {
+    "fast":         {"actual": 1.0, "perceived": 0.0, "max_cong": 0.00, "tpen": 0.3, "seat": 0.0},
+    "calm":         {"actual": 0.0, "perceived": 1.0, "max_cong": 0.05, "tpen": 0.5, "seat": 0.0},
+    "min_transfer": {"actual": 0.5, "perceived": 0.5, "max_cong": 0.00, "tpen": 3.0, "seat": 0.0},
+    "balanced":     {"actual": 0.3, "perceived": 0.7, "max_cong": 0.03, "tpen": 0.8, "seat": 0.5},
+}
+
+
+def _jaccard(a: set, b: set) -> float:
+    u = a | b
+    return len(a & b) / len(u) if u else 0.0
