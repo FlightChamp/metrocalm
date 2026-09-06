@@ -1,0 +1,12 @@
+# MetroCalm — 전체 파이프라인 재현용 의존성
+# scripts/ 실행, 모델 학습·평가, 스키마 검증, 테스트에 필요하다.
+#   pip install -r requirements.txt -r requirements-dev.txt
+# 앱 실행만 할 거라면 requirements.txt 만으로 충분하다.
+
+openpyxl>=3.1         # 원본 xlsx / 좌표 워크북 읽기
+scikit-learn>=1.4     # PR-AUC, precision-recall curve
+lightgbm>=4.3         # Model-1 / Model-2 (baseline 채택 판정 근거 재현용)
+shap>=0.45            # Model-2 설명가능성
+pandera>=0.20         # 스키마 검증
+matplotlib>=3.8       # 리포트 그림
+pytest>=8.0

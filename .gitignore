@@ -77,3 +77,18 @@ desktop.ini
 *.tmp
 tmp/
 scratch/
+
+# ---------- 배포용: 앱이 런타임에 읽는 마트만 커밋한다 ----------
+# 앱은 대용량 마트(congestion_training_mart 706,678행, 승하차 마트 15,957,680행)를
+# 읽지 않는다. 아래 파일만 있으면 로컬과 동일한 기능이 동작한다.
+!data/marts/route_edge_mart.*
+!data/marts/transfer_edge_mart.*
+!data/marts/congestion_edge_lookup.*
+!data/marts/congestion_station_profile.*
+!data/marts/transfer_tip_mart.*
+!data/marts/event_did_mart.*
+!data/marts/event_spike_mart.*
+!data/marts/headway_station_30min.*
+!data/marts/headway_line_30min.*
+!data/marts/route_evaluation_mart_*.*
+!data/marts/route_evaluation_summary_*.*
