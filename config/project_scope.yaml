@@ -1,0 +1,106 @@
+﻿# MetroCalm 프로젝트 범위 정의 (single source of truth)
+# 모든 파이프라인은 이 파일을 읽어 in-scope 필터를 적용한다.
+project:
+  name: MetroCalm
+  description: 서울 지하철 1~8호선 혼잡도 기반 쾌적 경로 추천 시스템
+  operator: 서울교통공사
+
+scope:
+  in_scope_lines:
+  - line_id: "1"
+    branch_code: main
+    start_station: 서울역
+    end_station: 청량리
+  - line_id: "2"
+    branch_code: main
+    start_station: 시청
+    end_station: 시청
+  - line_id: "2"
+    branch_code: seongsu_branch
+    start_station: 성수
+    end_station: 신설동
+  - line_id: "2"
+    branch_code: sinjeong_branch
+    start_station: 신도림
+    end_station: 까치산
+  - line_id: "3"
+    branch_code: main
+    start_station: 지축
+    end_station: 오금
+  - line_id: "4"
+    branch_code: main
+    start_station: 불암산
+    end_station: 남태령
+  - line_id: "5"
+    branch_code: main
+    start_station: 방화
+    end_station: 하남검단산
+  - line_id: "5"
+    branch_code: macheon_branch
+    start_station: 강동
+    end_station: 마천
+  - line_id: "6"
+    branch_code: main
+    start_station: 응암
+    end_station: 신내
+  - line_id: "7"
+    branch_code: main
+    start_station: 장암
+    end_station: 온수
+  - line_id: "8"
+    branch_code: main
+    start_station: 암사역사공원
+    end_station: 모란
+  out_of_scope_lines:
+  - 9호선
+  - 신분당선
+  - 공항철도
+  - 경의중앙선
+  - 수인분당선
+  - 경춘선
+  - 우이신설선
+  - 신림선
+  - 김포골드라인
+  - GTX-A
+  - 1호선(코레일 구간)
+  - 4호선(코레일 구간)
+  - 7호선(인천 구간)
+
+masters:
+  station_master: data/master/station_master.csv
+  station_alias_master: data/master/station_alias_master.csv
+  line_master: data/master/line_master.csv
+  transfer_station_master: data/master/transfer_station_master.csv
+  branch_node_master: data/master/branch_node_master.csv
+  event_station_master: data/master/event_station_master.csv
+  event_calendar_master: data/master/event_calendar_master.csv
+  university_event_master: data/master/university_event_master.csv
+
+expected_counts:
+  transfer_stations: 35
+  branch_nodes: 4
+
+naming:
+  station_suffix_exempt:
+    - 서울역
+  forced_canonical:
+    "총신대입구": 이수
+    "총신대입구(이수)": 이수
+    "이수/총신대입구(이수)": 이수
+    "동대문운동장": 동대문역사문화공원
+
+congestion:
+  # 혼잡도 데이터는 특정 날짜 실측치가 아니라 분기·요일유형별 평균 패턴이다.
+  target_semantics: expected_congestion_pattern
+  high_congestion_thresholds: [100, 130, 150]
+  time_bin_minutes: 30
+  day_types: [weekday, saturday, sunday]
+
+route_scoring:
+  default_weights:
+    alpha_travel_time: 1.0
+    beta_congestion: 0.6
+    gamma_transfer: 0.8
+    delta_event_risk: 0.7
+    eta_seat_bonus: 0.3
+  modes: [fast, calm, seat, min_transfer, balanced]
