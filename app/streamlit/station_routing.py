@@ -311,7 +311,13 @@ def describe_path(scorer, path: list[str]) -> list[dict]:
         # 같은 역명이 두 번 나온다. 그 경우 방면 표기를 생략한다.
         sgm["direction_label"] = ("%s 방면" % nxt) if (nxt and nxt != sgm["to"]) else ""
         sgm["bound_label"] = bound_label(sgm["line"], b, d)   # 참고용(비표시)
-        sgm["minutes"] = round(sgm["minutes"], 1)
+        # 중간역 정차시간. evaluate() 와 같은 규칙(엣지 k개 -> 중간역 k-1개)을 쓴다.
+        # 여기서 더하지 않으면 카드 총계와 segment 합계가 어긋난다.
+        dwell_min = _dwell_min(scorer)
+        sgm["dwell_stop_count"] = max(sgm["n_stops"] - 1, 0)
+        sgm["dwell_min"] = round(sgm["dwell_stop_count"] * dwell_min, 1)
+        sgm["running_min"] = round(sgm["minutes"], 1)
+        sgm["minutes"] = round(sgm["minutes"] + sgm["dwell_min"], 1)
         sgm["max_congestion"] = round(sgm["max_congestion"], 1)
         out.append(sgm)
     return out
@@ -512,3 +518,17 @@ def transfer_basis_text(station, arrive_toward, depart_toward) -> str:
     if not parts:
         return "환승 위치 기준"
     return " · ".join(parts) + " 기준"
+
+
+def _dwell_min(scorer) -> float:
+    """RouteScorer 가 정의된 모듈의 DEFAULT_DWELL_TIME_MIN.
+
+    load_scorer_class() 는 module_from_spec + exec_module 로 모듈을 만들고
+    sys.modules 에 등록하지 않는다. 따라서 sys.modules 조회로는 찾을 수 없고,
+    클래스 객체의 __globals__ 를 통해 모듈 전역을 직접 읽어야 한다.
+    """
+    g = getattr(type(scorer).evaluate, "__globals__", {})
+    try:
+        return float(g.get("DEFAULT_DWELL_TIME_MIN", 0.0))
+    except (TypeError, ValueError):
+        return 0.0
