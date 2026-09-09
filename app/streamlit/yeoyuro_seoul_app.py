@@ -1031,7 +1031,7 @@ def _render_route_result(result, fallback, o, d_):
     if alt:
         st.subheader("최단경로 대비 쾌적 대안")
         route_card("대안 경로", alt, o, d_,
-                   "예상 소요시간은 %+.1f분이지만 최대 기대 혼잡도가 %.1f%%p 낮습니다."
+                   "예상 소요시간은 %.1f분 늘어나지만, 최대 기대 혼잡도는 %.1f%%p 낮습니다."
                    % (alt["time_loss_vs_fastest"], alt["comfort_gain_vs_fastest"]), "good")
     else:
         st.warning("현재 최단 경로 외에 **유의미한 쾌적 대안 경로가 없습니다.** "
