@@ -471,3 +471,44 @@ _MODE_WEIGHTS = {
 def _jaccard(a: set, b: set) -> float:
     u = a | b
     return len(a & b) / len(u) if u else 0.0
+
+# ---------------------------------------------------------------- 환승 방면 표기
+def _norm_station_token(s) -> str:
+    """역명·방면 표기를 비교용 토큰으로 정규화한다.
+
+    '강동 방면' -> '강동',  '서울역' -> '서울',  '동대문역사문화공원 방면' -> 그대로.
+    끝의 '역' 만 떼므로 역명 중간의 '역' 은 보존된다.
+    """
+    s = "" if s is None else str(s)
+    s = s.replace("방면", "")
+    s = "".join(s.split())
+    if len(s) > 1 and s.endswith("역"):
+        s = s[:-1]
+    return s
+
+
+def is_valid_toward(station, toward) -> bool:
+    """방면 표기가 환승역 자기 자신을 가리키면 무효로 본다.
+
+    원본 `수도권 도시철도 환승 데이터` 의 강동 5→5 두 행은
+    `하차 열차 방면` 이 '강동 방면'(자기 역명)으로 기재돼 있다.
+    substring 이 아니라 정규화 후 완전 일치로 판단하므로
+    '동대문' 과 '동대문역사문화공원' 은 서로 다른 토큰이 된다.
+    """
+    t = _norm_station_token(toward)
+    return bool(t) and t != _norm_station_token(station)
+
+
+def transfer_basis_text(station, arrive_toward, depart_toward) -> str:
+    """환승 방면 기준 문구. 무효한 방면만 생략하고 나머지는 그대로 쓴다.
+
+    원본 값을 고쳐 쓰지 않는다. 경로 기준 방면 유도는 v1.1 과제다.
+    """
+    parts = []
+    if is_valid_toward(station, arrive_toward):
+        parts.append("%s 하차" % str(arrive_toward).strip())
+    if is_valid_toward(station, depart_toward):
+        parts.append("%s 승차" % str(depart_toward).strip())
+    if not parts:
+        return "환승 위치 기준"
+    return " · ".join(parts) + " 기준"

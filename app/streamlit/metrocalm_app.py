@@ -782,12 +782,15 @@ def render_timeline(segs):
                     rows.append("하차 위치: %s" % _esc(tip["alight"]))
                 if tip["board"]:
                     rows.append("승차 위치: %s" % _esc(tip["board"]))
-                note = ("%s 하차 · %s 승차 기준"
-                        % (_esc(tip["arrive_toward"]), _esc(tip["depart_toward"]))
+                # 원본에 자기 역명이 방면으로 적힌 이상값이 있다(강동 5→5).
+                # 해당 방면 문구만 생략하고 호차/문 안내는 그대로 유지한다.
+                from station_routing import transfer_basis_text
+                note = (transfer_basis_text(sg["at"], tip["arrive_toward"],
+                                            tip["depart_toward"])
                         if tip.get("direction_matched") else "")
                 extra = ('<div class="mc-tf-b">%s</div>' % " · ".join(rows))
                 if note:
-                    extra += '<div class="mc-note">%s</div>' % note
+                    extra += '<div class="mc-note">%s</div>' % _esc(note)
             html.append(
                 '<div class="mc-tf"><div class="mc-tf-h">↓ %s역 환승</div>'
                 '<div class="mc-tf-b">%s</div>%s</div>'
@@ -809,18 +812,6 @@ def time_breakdown(ev):
     # running = (승차+정차+도보) - 정차 - 도보. 구버전 결과에도 안전하다.
     run = (ev.get("ride_time_min") or 0) - dwell - walk
     return run, dwell, walk, wait
-
-
-def _breakdown_text(ev):
-    run, dwell, walk, wait = time_breakdown(ev)
-    parts = ["승차 %.0f분" % run]
-    if dwell:
-        parts.append("중간역 정차 %.0f분" % dwell)
-    if walk:
-        parts.append("환승 도보 %.0f분" % walk)
-    if wait:
-        parts.append("환승 대기 %.0f분" % wait)
-    return " + ".join(parts)
 
 
 def route_summary_line(ev, o, d_):
@@ -848,10 +839,7 @@ def route_card(title, ev, o, d_, note=None, tone="normal"):
         c[2].metric("최대 기대 혼잡도", "%.0f%%" % (ev["max_congestion"] or 0))
         c[3].metric("환승", "%d회" % ev["transfer_count"])
         c[4].metric("혼잡 주의 구간", "%d개" % ev.get("p95_exposure_count", 0))
-        st.caption("예상 소요시간 = " + _breakdown_text(ev) + ". "
-                   "역간 이동시간, 중간역 정차시간, 환승 도보시간, "
-                   "환승 후 평균 대기시간이 반영됩니다. "
-                   "최초 승차 전 대기시간은 포함하지 않습니다.")
+
         render_timeline(ev["segments"])
         if ev.get("event_risk_min"):
             st.caption("이벤트 영향으로 쾌적 체감시간 +%.1f분 가산" % ev["event_risk_min"])
