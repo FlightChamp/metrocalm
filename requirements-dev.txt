@@ -10,3 +10,4 @@ shap>=0.45            # Model-2 설명가능성
 pandera>=0.20         # 스키마 검증
 matplotlib>=3.8       # 리포트 그림
 pytest>=8.0
+tabulate>=0.9         # pandas .to_markdown() 리포트 출력
