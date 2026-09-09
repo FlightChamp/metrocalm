@@ -796,16 +796,41 @@ def render_timeline(segs):
     st.markdown("".join(html), unsafe_allow_html=True)
 
 
+def time_breakdown(ev):
+    """예상 소요시간을 승차·중간정차·환승도보·환승대기로 분해한다.
+
+    합계는 항상 actual_time_min 과 같아야 한다.
+    최초 승차 전 대기시간은 어느 항목에도 들어가지 않는다.
+    """
+    wait = ev.get("transfer_wait_min") or 0
+    walk = sum(sg.get("minutes") or 0 for sg in ev.get("segments") or []
+               if sg.get("kind") == "transfer")
+    dwell = ev.get("dwell_time_min") or 0
+    # running = (승차+정차+도보) - 정차 - 도보. 구버전 결과에도 안전하다.
+    run = (ev.get("ride_time_min") or 0) - dwell - walk
+    return run, dwell, walk, wait
+
+
+def _breakdown_text(ev):
+    run, dwell, walk, wait = time_breakdown(ev)
+    parts = ["승차 %.0f분" % run]
+    if dwell:
+        parts.append("중간역 정차 %.0f분" % dwell)
+    if walk:
+        parts.append("환승 도보 %.0f분" % walk)
+    if wait:
+        parts.append("환승 대기 %.0f분" % wait)
+    return " + ".join(parts)
+
+
 def route_summary_line(ev, o, d_):
     lines = []
     for sg in ev["segments"]:
         if sg["kind"] == "ride" and sg["line"] not in lines:
             lines.append(sg["line"])
-    wait = ev.get("transfer_wait_min") or 0
-    walk = sum(sg.get("minutes") or 0 for sg in ev.get("segments") or []
-               if sg.get("kind") == "transfer")
-    tail = (" (승차 %d분 + 환승 도보·대기 %d분)"
-            % (round((ev.get("ride_time_min") or 0) - walk), round(walk + wait))
+    run, dwell, walk, wait = time_breakdown(ev)
+    tail = (" (승차 %d분 + 환승·대기 %d분)"
+            % (round(run + dwell), round(walk + wait))
             ) if (wait or walk) else ""
     return "%s → %s · %s · 환승 %d회 · 예상 %d분%s · 최대 기대 혼잡도 %.0f%%" % (
         o, d_, " + ".join("%s호선" % x for x in lines),
@@ -823,13 +848,10 @@ def route_card(title, ev, o, d_, note=None, tone="normal"):
         c[2].metric("최대 기대 혼잡도", "%.0f%%" % (ev["max_congestion"] or 0))
         c[3].metric("환승", "%d회" % ev["transfer_count"])
         c[4].metric("혼잡 주의 구간", "%d개" % ev.get("p95_exposure_count", 0))
-        wait = ev.get("transfer_wait_min") or 0
-        if wait:
-            walk = sum(sg.get("minutes") or 0 for sg in ev["segments"]
-                       if sg.get("kind") == "transfer")
-            st.caption("예상 소요시간 = 승차 %.0f분 + 환승 도보·대기 %.0f분. "
-                       "대기시간은 30분 단위 평균 배차간격 기반 추정입니다."
-                       % ((ev.get("ride_time_min") or 0) - walk, walk + wait))
+        st.caption("예상 소요시간 = " + _breakdown_text(ev) + ". "
+                   "역간 이동시간, 중간역 정차시간, 환승 도보시간, "
+                   "환승 후 평균 대기시간이 반영됩니다. "
+                   "최초 승차 전 대기시간은 포함하지 않습니다.")
         render_timeline(ev["segments"])
         if ev.get("event_risk_min"):
             st.caption("이벤트 영향으로 쾌적 체감시간 +%.1f분 가산" % ev["event_risk_min"])
@@ -1036,8 +1058,11 @@ def _render_route_result(result, fallback, o, d_):
     with st.expander("후보 경로 비교"):
         rows = []
         for c in result["candidates"]:
+            _run, _dwell, _walk, _wait = time_breakdown(c)
             rows.append({"예상 소요시간": c["actual_time_min"],
-                         "승차·도보": c.get("ride_time_min"),
+                         "승차": round(_run, 1),
+                         "중간역 정차": round(_dwell, 1),
+                         "환승 도보": round(_walk, 1),
                          "환승 대기": c.get("transfer_wait_min"),
                          "쾌적 체감시간": c["perceived_time_min"],
                          "평균 기대 혼잡도": c["avg_congestion"],

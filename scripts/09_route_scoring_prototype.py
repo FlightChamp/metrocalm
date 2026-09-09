@@ -58,6 +58,13 @@ ENC = "utf-8-sig"
 C0 = 80.0
 KAPPA = 0.5
 
+# 중간역 정차시간(분).
+# 원본 역간거리 및 소요시간 의 소요시간은 순수 주행시간이며 정차시간이 없다.
+# 열차운행현황 의 공표 소요시간·표정속도와 교차검증한 결과 중간역당 약 30초가
+# 빠져 있었다(1호선 30.0초, 3호선 30.0초, 6호선 30.8초, 7호선 27.0초).
+# 노선·시간대별 실제 정차시간은 다르므로 v1 한계로 남긴다.
+DEFAULT_DWELL_TIME_MIN = 0.5
+
 # 환승 혼잡 페널티: 5만 명당 1분, 최대 3분
 TRANSFER_CROWD_PENALTY_RATE = 50000.0
 TRANSFER_CROWD_PENALTY_MAX = 3.0
@@ -399,20 +406,37 @@ class RouteScorer:
     # ---------- 경로 평가 ----------
     def evaluate(self, path) -> dict:
         t = p = tp = ev = 0.0
+        walk = 0.0
         congs = []
         n_tr = 0
+        # 연속한 ride 엣지 묶음(= 같은 열차를 타고 가는 구간)마다
+        # 중간 정차역 수는 max(k - 1, 0) 이다. 출발역·도착역·환승역은
+        # 이 정의에서 자동으로 빠진다.
+        seg_edges = 0
+        dwell_stops = 0
         for u, v in zip(path, path[1:]):
             e = next(x for x in self.adj[u] if x["to"] == v)
             if e["kind"] == "ride":
+                seg_edges += 1
                 t += e["time"]
                 p += e["cost"]
                 congs.append(e["cong"])
                 ev += e.get("event", 0.0)
             else:
-                n_tr += 1
+                dwell_stops += max(seg_edges - 1, 0)
+                seg_edges = 0
+                if e["kind"] == "transfer":
+                    n_tr += 1
+                    walk += e["time"]
+                    tp += e["cost"]
                 t += e["time"]
-                tp += e["cost"]
                 p += e["cost"]
+        dwell_stops += max(seg_edges - 1, 0)
+        running = t - walk
+        dwell = dwell_stops * DEFAULT_DWELL_TIME_MIN
+        # 정차시간은 물리적 시간이라 혼잡도 배수를 곱하지 않고 한 번만 더한다.
+        t += dwell
+        p += dwell
         congs = [c for c in congs if not np.isnan(c)]
         p95 = self.lookup["congestion_median"].quantile(0.95)
         seat = self._seat_score(path)
@@ -420,6 +444,10 @@ class RouteScorer:
             "path": path,
             "actual_time_min": round(t, 1),
             "perceived_time_min": round(p, 1),
+            "running_time_min": round(running, 1),
+            "dwell_time_min": round(dwell, 1),
+            "dwell_stop_count": int(dwell_stops),
+            "transfer_walk_min": round(walk, 1),
             "avg_congestion": round(float(np.mean(congs)), 1) if congs else np.nan,
             "max_congestion": round(float(np.max(congs)), 1) if congs else np.nan,
             "p95_exposure_count": int(sum(c >= p95 for c in congs)),

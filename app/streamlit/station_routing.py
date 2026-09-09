@@ -130,8 +130,14 @@ def apply_transfer_wait(ev: dict, headway: dict, day_type: str, time_bin: str):
         if w:
             total += w
     ev["transfer_wait_min"] = round(total, 1)
-    # 대기를 더하기 '전' 값이 승차+환승도보 시간이다. 여기서 또 빼면 이중 차감이 된다.
+    # 대기를 더하기 '전' 값이 승차+중간정차+환승도보 시간이다.
+    # 여기서 또 빼면 이중 차감이 된다. 세부 항목(running/dwell/walk)은
+    # evaluate() 가 이미 분리해 넣어두므로 그대로 둔다.
     ev["ride_time_min"] = round(ev["actual_time_min"], 1)
+    ev.setdefault("dwell_time_min", 0.0)
+    ev.setdefault("dwell_stop_count", 0)
+    ev.setdefault("running_time_min", ev["ride_time_min"])
+    ev.setdefault("transfer_walk_min", 0.0)
     if total:
         ev["actual_time_min"] = round(ev["actual_time_min"] + total, 2)
         ev["perceived_time_min"] = round(ev["perceived_time_min"] + total, 2)
