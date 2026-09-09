@@ -14,7 +14,7 @@ data and recommends comfort-optimized alternative routes.
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![tests](https://img.shields.io/badge/tests-99%20passed-brightgreen)
 
-![여유로 서울](docs/images/01_route_map.png)
+![여유로 서울](docs/images/02_route_card.png)
 
 <sub>클릭형 벡터 노선도(5120×2880)에서 출발·도착역을 고르면 추천 경로가 지도 위에 표시됩니다.</sub>
 
@@ -54,7 +54,7 @@ edge_cost      = perceived_time + transfer_penalty + event_risk
 3번이 이 프로젝트에서 가장 중요한 결과입니다. 자세한 판단 근거는
 [`docs/model_card_congestion.md`](docs/model_card_congestion.md)에 있습니다.
 
-![이벤트 DiD](docs/images/06_event_did.png)
+![이벤트 DiD](docs/images/07_event_did.png)
 
 <sub>전후 비교(`spike_ratio`)와 대조군을 둔 이중차분(DiD) 순효과를 나란히 둡니다.
 불꽃축제 3.7배 → 3.4배처럼 **숫자가 작아진 것이 정확해진 것**입니다.
@@ -150,7 +150,7 @@ U턴은 **배차가 긴 낮 시간대에만** 나타나 08:30 검증에서는 �
 
 마지막 행이 이 표를 진짜로 만듭니다. 검증할 수 없는 것을 검증한 척하지 않았습니다.
 
-![모델 검증 리포트](docs/images/07_model_report.png)
+![모델 검증 리포트](docs/images/08_model_report.png)
 
 <sub>학습 **전에** 정한 통과 조건을 앱 안에 그대로 띄웁니다.
 baseline ladder 에서 L1→L2 로 MAE 가 11.1 → 2.4 로 떨어지고,
@@ -185,7 +185,7 @@ streamlit run app/streamlit/yeoyuro_seoul_app.py -- --root .
 
 ### 추천 경로 카드
 
-![추천 경로](docs/images/02_route_card.png)
+![추천 경로](docs/images/03_route_alternative1.png)
 
 예상 소요시간·쾌적 체감시간·최대 기대 혼잡도·환승·혼잡 주의 구간을 함께 보여주고,
 구간마다 **방면(경로상 다음 역 기준)** 과 이동 역 수·소요시간·기대 혼잡도를 분리해 표시합니다.
@@ -193,7 +193,7 @@ streamlit run app/streamlit/yeoyuro_seoul_app.py -- --root .
 
 ### 환승 안내 — 방향까지 맞춘다
 
-![대안 경로](docs/images/03_route_alternative.png)
+![대안 경로](docs/images/03_route_alternative2.png)
 
 같은 환승역이라도 **진행 방향에 따라 유리한 위치가 정반대**입니다.
 그래서 경로의 앞뒤 역으로 방면을 좁혀 호차/문을 고르고, 어떤 방면 기준인지 함께 밝힙니다.
@@ -209,7 +209,7 @@ streamlit run app/streamlit/yeoyuro_seoul_app.py -- --root .
 
 ### 노선별 혼잡 단면
 
-![노선별 혼잡도](docs/images/05_line_congestion.png)
+![노선별 혼잡도](docs/images/06_line_congestion.png)
 
 노선·방향·요일유형·시간대를 고르면 노선 전체의 기대 혼잡도를 **운행 순서대로** 봅니다.
 역 순서는 역번호가 아니라 그래프를 걸어서 만듭니다.
