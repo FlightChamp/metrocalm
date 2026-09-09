@@ -1,7 +1,7 @@
 """
-bootstrap_metrocalm.py
+bootstrap_yeoyuro_seoul.py
 ======================
-MetroCalm(서울 지하철 혼잡도 기반 쾌적 경로 추천 시스템) 프로젝트 부트스트랩 스크립트.
+여유로 서울 (Yeoyuro Seoul, 서울 지하철 혼잡도 기반 쾌적 경로 추천 시스템) 프로젝트 부트스트랩 스크립트.
 
 이 스크립트가 하는 일
 ---------------------
@@ -20,8 +20,8 @@ MetroCalm(서울 지하철 혼잡도 기반 쾌적 경로 추천 시스템) 프�
 
 사용법
 ------
-    python bootstrap_metrocalm.py --root .
-    python bootstrap_metrocalm.py --root C:\\projects\\metro_calm_project --force
+    python bootstrap_yeoyuro_seoul.py --root .
+    python bootstrap_yeoyuro_seoul.py --root C:\\projects\\metro_calm_project --force
 
 주의
 ----
@@ -97,16 +97,16 @@ DIRECTORIES = [
     "data/marts",
     "data/interim",
     # --- source ---
-    "src/metrocalm/config",
-    "src/metrocalm/ingestion",
-    "src/metrocalm/validation",
-    "src/metrocalm/masters",
-    "src/metrocalm/features",
-    "src/metrocalm/models",
-    "src/metrocalm/graph",
-    "src/metrocalm/scoring",
-    "src/metrocalm/service",
-    "src/metrocalm/utils",
+    "src/yeoyuro_seoul/config",
+    "src/yeoyuro_seoul/ingestion",
+    "src/yeoyuro_seoul/validation",
+    "src/yeoyuro_seoul/masters",
+    "src/yeoyuro_seoul/features",
+    "src/yeoyuro_seoul/models",
+    "src/yeoyuro_seoul/graph",
+    "src/yeoyuro_seoul/scoring",
+    "src/yeoyuro_seoul/service",
+    "src/yeoyuro_seoul/utils",
     # --- 실행 엔트리포인트 ---
     "scripts",
     # --- 산출물 ---
@@ -122,7 +122,7 @@ DIRECTORIES = [
     "config",
 ]
 
-PACKAGE_INIT_DIRS = [d for d in DIRECTORIES if d.startswith("src/metrocalm")]
+PACKAGE_INIT_DIRS = [d for d in DIRECTORIES if d.startswith("src/yeoyuro_seoul")]
 
 
 # =====================================================================
@@ -484,7 +484,7 @@ class BootstrapResult:
     warnings: list = field(default_factory=list)
 
 
-class MetroCalmBootstrapper:
+class YeoyuroSeoulBootstrapper:
     """폴더 트리 + master 테이블 + config 파일을 생성한다."""
 
     def __init__(self, root: Path, force: bool = False):
@@ -679,10 +679,10 @@ class MetroCalmBootstrapper:
             for lid, _, bcode, _, start, end, _, _ in LINE_MASTER_ROWS
         )
         out_yaml = "\n".join(f"  - {x}" for x in OUT_OF_SCOPE_LINES)
-        content = f"""# MetroCalm 프로젝트 범위 정의 (single source of truth)
+        content = f"""# 여유로 서울 (Yeoyuro Seoul) 프로젝트 범위 정의 (single source of truth)
 # 모든 파이프라인은 이 파일을 읽어 in-scope 필터를 적용한다.
 project:
-  name: MetroCalm
+  name: 여유로 서울 (Yeoyuro Seoul)
   description: 서울 지하철 1~8호선 혼잡도 기반 쾌적 경로 추천 시스템
   operator: 서울교통공사
 
@@ -786,14 +786,14 @@ mlruns/
 reports/figures/*.png
 .DS_Store
 """)
-        self._write("README.md", """# MetroCalm
+        self._write("README.md", """# 여유로 서울 (Yeoyuro Seoul)
 
 > 서울교통공사 1~8호선 과거 승하차·혼잡도·환승·역간거리·이벤트 데이터를 결합해
 > **기대 혼잡 위험도**를 추정하고, 소요시간뿐 아니라 쾌적성·환승 피로도·이벤트성 혼잡·
 > 착석 가능성 proxy 를 함께 고려한 **multi-objective 경로 추천 시스템**.
 
 ## 1. 문제 정의
-기존 길찾기는 최단시간·최소환승 중심이다. MetroCalm 은 경로 추천을
+기존 길찾기는 최단시간·최소환승 중심이다. 여유로 서울 은 경로 추천을
 `시간 / 혼잡 / 환승 피로 / 이벤트 위험 / 착석 가능성` 을 함께 최적화하는
 multi-objective scoring 문제로 재정의한다.
 
@@ -813,7 +813,7 @@ raw -> staging -> master -> marts -> spike detection -> congestion model
 
 ## 4. 실행
 ```bash
-python bootstrap_metrocalm.py --root .
+python bootstrap_yeoyuro_seoul.py --root .
 python scripts/01_build_station_master.py
 python scripts/02_build_ridership_mart.py
 ```
@@ -888,7 +888,7 @@ Streamlit demo, FastAPI endpoint.
 def render_report(root: Path, res: BootstrapResult) -> str:
     lines = []
     lines.append("=" * 68)
-    lines.append(" MetroCalm bootstrap report")
+    lines.append(" 여유로 서울 bootstrap report")
     lines.append(f" root : {root.resolve()}")
     lines.append(f" time : {datetime.now():%Y-%m-%d %H:%M:%S}")
     lines.append("=" * 68)
@@ -928,7 +928,7 @@ def render_report(root: Path, res: BootstrapResult) -> str:
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="MetroCalm 프로젝트 부트스트랩")
+    parser = argparse.ArgumentParser(description="여유로 서울 프로젝트 부트스트랩")
     parser.add_argument("--root", default=".", help="프로젝트 루트 경로 (기본: 현재 폴더)")
     parser.add_argument("--force", action="store_true", help="기존 파일 덮어쓰기")
     args = parser.parse_args(argv)
@@ -936,7 +936,7 @@ def main(argv=None) -> int:
     root = Path(args.root).expanduser()
     root.mkdir(parents=True, exist_ok=True)
 
-    boot = MetroCalmBootstrapper(root=root, force=args.force)
+    boot = YeoyuroSeoulBootstrapper(root=root, force=args.force)
     res = boot.run()
 
     report = render_report(root, res)

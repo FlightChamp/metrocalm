@@ -1,7 +1,7 @@
 """
 04_build_congestion_mart.py
 ===========================
-MetroCalm Phase 1 마무리 — stg_congestion 을 모델링/그래프에 바로 쓸 수 있는 mart 로 변환한다.
+여유로 서울 Phase 1 마무리 — stg_congestion 을 모델링/그래프에 바로 쓸 수 있는 mart 로 변환한다.
 
 전제
 ----

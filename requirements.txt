@@ -1,4 +1,4 @@
-# MetroCalm — 앱 배포용 런타임 의존성
+# 여유로 서울 (Yeoyuro Seoul) — 앱 배포용 런타임 의존성
 # Streamlit Community Cloud 는 루트 requirements.txt 만 자동 인식하므로
 # 이 파일에는 앱 실행에 실제로 import 되는 패키지만 둔다.
 # 파이프라인 재현(스크립트 실행·모델 학습·검증)은 requirements-dev.txt 를 쓴다.

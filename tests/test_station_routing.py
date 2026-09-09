@@ -213,7 +213,7 @@ def test_transfer_tip_respects_direction(ctx_at):
     """
     import importlib
     app_dir = ROOT / "app" / "streamlit"
-    if not (app_dir / "metrocalm_app.py").exists():
+    if not (app_dir / "yeoyuro_seoul_app.py").exists():
         pytest.skip("앱 파일 없음")
     tip_mart = None
     for ext in (".parquet", ".csv.gz", ".csv"):

@@ -1,4 +1,4 @@
-# MetroCalm 평가 전략 (evaluation_strategy.md)
+# 여유로 서울 (Yeoyuro Seoul) 평가 전략 (evaluation_strategy.md)
 
 - 최종 갱신: 2026-09-04
 - 목적: 파이프라인 각 단계의 **문제 유형을 식별하고, 그에 맞는 표준 평가 체계**를 붙인 근거를 한 곳에 정리한다.
@@ -356,7 +356,7 @@ Pareto front 가 계산되는 후보 집합은 **Yen's K-shortest 가 만든 것
 ## G. 재현 방법
 
 ```bash
-python bootstrap_metrocalm.py --root .                    # 마스터 생성
+python bootstrap_yeoyuro_seoul.py --root .                    # 마스터 생성
 python scripts/01_build_ridership_mart.py --root .        # 승하차 마트
 python scripts/03_build_stg_congestion.py --root .        # 혼잡도 staging
 python scripts/04_build_congestion_mart.py --root .       # 혼잡도 마트

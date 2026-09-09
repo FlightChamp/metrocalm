@@ -1,4 +1,4 @@
-# MetroCalm — 전체 파이프라인 재현용 의존성
+# 여유로 서울 (Yeoyuro Seoul) — 전체 파이프라인 재현용 의존성
 # scripts/ 실행, 모델 학습·평가, 스키마 검증, 테스트에 필요하다.
 #   pip install -r requirements.txt -r requirements-dev.txt
 # 앱 실행만 할 거라면 requirements.txt 만으로 충분하다.

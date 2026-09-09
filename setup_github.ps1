@@ -1,5 +1,5 @@
-﻿# =====================================================================
-#  setup_github.ps1 — MetroCalm GitHub 업로드 준비
+# =====================================================================
+#  setup_github.ps1 — 여유로 서울 GitHub 업로드 준비
 #
 #  하는 일
 #    1) 폴더 구조 정리 (docs/, tests/, app/streamlit/)
@@ -16,7 +16,7 @@
 # =====================================================================
 
 param(
-    [string]$Repo = "https://github.com/FlightChamp/metrocalm.git",
+    [string]$Repo = "https://github.com/FlightChamp/yeoyuro-seoul.git",
     [switch]$Commit,
     [switch]$Push
 )
@@ -99,7 +99,7 @@ Commit "chore: 저장소 초기 설정(.gitignore, LICENSE, requirements)" `
 Commit "docs: README 및 프로젝트 문서" `
        @("README.md", "docs")
 Commit "feat(master): 프로젝트 범위·환승역·이벤트 캘린더 마스터" `
-       @("data\master", "bootstrap_metrocalm.py", "config")
+       @("data\master", "bootstrap_yeoyuro_seoul.py", "config")
 Commit "feat(pipeline): 승하차·혼잡도 마트 구축 (01, 03, 04)" `
        @("scripts\01_build_ridership_mart.py", "scripts\03_build_stg_congestion.py",
          "scripts\04_build_congestion_mart.py")

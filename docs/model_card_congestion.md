@@ -2,7 +2,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 모델명 | MetroCalm Congestion Estimator |
+| 모델명 | Yeoyuro Seoul Congestion Estimator |
 | 버전 | v1.0 |
 | 작성일 | 2026-09-04 |
 | **운영 채택 모델** | **L2 Baseline (역 × 방향 × 요일유형 × 시간대 평균)** |

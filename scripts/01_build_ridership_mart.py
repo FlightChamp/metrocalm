@@ -1,7 +1,7 @@
 """
 01_build_ridership_mart.py
 ==========================
-MetroCalm Phase 1 — 48개월 역별 시간대별 이용인원 통합 파이프라인.
+여유로 서울 Phase 1 — 48개월 역별 시간대별 이용인원 통합 파이프라인.
 
 이 스크립트는 '실제 원본 48개 파일을 전수 감사한 결과'를 그대로 코드로 옮긴 것이다.
 추측으로 만든 파서가 아니라, 아래 이상 징후를 이미 확인하고 대응한 파서다.
@@ -339,7 +339,7 @@ def quality_report(raw: pd.DataFrame, mart: pd.DataFrame,
 
 # ---------------------------------------------------------------------
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="MetroCalm Phase 1 승하차 통합 파이프라인")
+    ap = argparse.ArgumentParser(description="여유로 서울 Phase 1 승하차 통합 파이프라인")
     ap.add_argument("--raw", default="data/raw/ridership_monthly", help="원본 xlsx 폴더")
     ap.add_argument("--root", default=".", help="프로젝트 루트")
     args = ap.parse_args(argv)

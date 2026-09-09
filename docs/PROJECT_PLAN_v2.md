@@ -1,4 +1,4 @@
-# MetroCalm 프로젝트 기획안 v2 (실측 반영본)
+# 여유로 서울 (Yeoyuro Seoul) 프로젝트 기획안 v2 (실측 반영본)
 
 - 작성일: 2026-08-31
 - 근거: 보유 데이터 74개 파일 전수 감사 (`data_audit_report.md`, `congestion_audit_report.md`)
@@ -136,7 +136,7 @@ label_high, label_extreme, perceived_multiplier
 
 | # | 스크립트 | 산출물 | 상태 |
 |---|---|---|---|
-| 00 | `bootstrap_metrocalm.py` | 폴더 + 마스터 8종 + config | ✅ 완료 |
+| 00 | `bootstrap_yeoyuro_seoul.py` | 폴더 + 마스터 8종 + config | ✅ 완료 |
 | 01 | `01_build_ridership_mart.py` | station_master, alias_master, ridership_hourly_mart | ✅ 완료 |
 | 03 | `03_build_stg_congestion.py` | stg_congestion (715,299행) + 검증 리포트 4종 | ✅ 완료 |
 | 04 | `04_build_congestion_mart.py` | congestion_30min_mart / station_profile / edge_lookup | ✅ 완료 |

@@ -7,7 +7,7 @@
 
 ## 1. 문제
 
-MetroCalm 의 경로 소요시간이 일반 길찾기 서비스보다 짧게 나왔다.
+여유로 서울 의 경로 소요시간이 일반 길찾기 서비스보다 짧게 나왔다.
 그래프의 승차 엣지 가중치가 순수 주행시간이고 정차시간이 빠져 있을 가능성을 확인했다.
 
 ## 2. 확인 — 원본에 정차시간이 포함되어 있는가
@@ -151,7 +151,7 @@ perceived_time_min = Σ running × (1 + κ · max(congestion − C0, 0) / 100)
 | `scripts/09_route_scoring_prototype.py` | 상수 추가, `evaluate()` segment 분할·dwell 집계, 반환 필드 4개 추가 |
 | `station_routing.py` | 신규 필드 `setdefault` 방어, 주석 정정 |
 | `app/streamlit/station_routing.py` | 위와 동일본 유지 |
-| `app/streamlit/metrocalm_app.py` | `time_breakdown()` / `_breakdown_text()` 추가, 카드 문구·비교표 컬럼 분해 |
+| `app/streamlit/yeoyuro_seoul_app.py` | `time_breakdown()` / `_breakdown_text()` 추가, 카드 문구·비교표 컬럼 분해 |
 | `tests/test_dwell_time.py` | 신규 회귀 테스트 |
 
 신규 반환 필드: `running_time_min`, `dwell_time_min`, `dwell_stop_count`, `transfer_walk_min`

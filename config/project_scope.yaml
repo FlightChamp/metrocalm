@@ -1,7 +1,7 @@
-﻿# MetroCalm 프로젝트 범위 정의 (single source of truth)
+# 여유로 서울 (Yeoyuro Seoul) 프로젝트 범위 정의 (single source of truth)
 # 모든 파이프라인은 이 파일을 읽어 in-scope 필터를 적용한다.
 project:
-  name: MetroCalm
+  name: 여유로 서울 (Yeoyuro Seoul)
   description: 서울 지하철 1~8호선 혼잡도 기반 쾌적 경로 추천 시스템
   operator: 서울교통공사
 

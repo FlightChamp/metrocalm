@@ -1,4 +1,4 @@
-﻿# =====================================================================
+# =====================================================================
 #  apply_theme.ps1 — Streamlit 테마 설정 (BOM 없이 저장)
 #
 #  PowerShell 5.1 의 Set-Content -Encoding UTF8 은 BOM 을 붙인다.
@@ -10,7 +10,7 @@ New-Item -ItemType Directory -Path $dir -Force | Out-Null
 $path = Join-Path $dir "config.toml"
 
 $toml = @"
-# MetroCalm Streamlit 테마
+# 여유로 서울 Streamlit 테마
 # 탭 강조선, 라디오, 포커스 링은 CSS 가 아니라 primaryColor 가 그린다.
 # 기본값 #FF4B4B(빨강)를 브랜드 골드로 바꾼다.
 [theme]

@@ -1,6 +1,6 @@
-# MetroCalm v1 배포 계획
+# 여유로 서울 (Yeoyuro Seoul) v1 배포 계획
 
-> 대상: MetroCalm v1 포트폴리오 데모 배포
+> 대상: 여유로 서울 v1 포트폴리오 데모 데모 배포
 > 원칙: 기능·알고리즘·모델을 바꾸지 않고, 로컬과 **동일한** 동작을 외부에 공개한다.
 > 상태: 계획 확정 / 실행 대기 (§6, §7 은 실행 후 값을 채운다)
 
@@ -8,14 +8,14 @@
 
 ## 1. 진단 결과
 
-GitHub 레포(`FlightChamp/metrocalm`)를 클론해 확인한 값이다.
+GitHub 레포(`FlightChamp/yeoyuro-seoul`)를 클론해 확인한 값이다.
 
 | 항목 | 값 |
 |---|---|
 | 클론 크기 | 5.5MB (`.git` 2.2MB 포함) |
 | 추적 파일 | 113개 |
 | 민감 파일 추적 | 없음 (`.env`/`secret`/`credential`/`key`/`pem`/`token` 검색 0건) |
-| 절대경로 하드코딩 | 없음 (`bootstrap_metrocalm.py` docstring 예시 1건, 실행 무관) |
+| 절대경로 하드코딩 | 없음 (`bootstrap_yeoyuro_seoul.py` docstring 예시 1건, 실행 무관) |
 | 최대 추적 파일 | `docs/images/07_model_report.png` 252KB |
 
 ### 경로 처리
@@ -26,14 +26,14 @@ GitHub 레포(`FlightChamp/metrocalm`)를 클론해 확인한 값이다.
 → 배포 실행 명령은 인자 없는 형태를 쓴다.
 
 ```
-streamlit run app/streamlit/metrocalm_app.py
+streamlit run app/streamlit/yeoyuro_seoul_app.py
 ```
 
 `-- --root .` 는 Streamlit Community Cloud 의 Main file path 설정에서 인자를 넘길 수 없으므로 사용하지 않는다.
 
 ### 앱이 실제로 읽는 파일
 
-`metrocalm_app.py` → `station_routing.py` → `scripts/09_route_scoring_prototype.py` 체인을 전수 확인했다.
+`yeoyuro_seoul_app.py` → `station_routing.py` → `scripts/09_route_scoring_prototype.py` 체인을 전수 확인했다.
 
 | 위치 | 상태 | 파일 |
 |---|---|---|
@@ -90,7 +90,7 @@ Hugging Face 공식 문서(Spaces Overview) 기준:
 - Space 생성 시 선택 가능한 SDK 는 **Gradio / Docker / static HTML** 세 가지다. Streamlit SDK 는 생성 옵션에서 제외됐다.
 - **Static Space 만 누구나 무료**이며, 컴퓨트에서 실행되는 Gradio·Docker Space 생성은 개인 계정 PRO(월 $9), 조직 Team/Enterprise 플랜을 요구한다.
 
-MetroCalm 은 Streamlit 앱이므로 Docker SDK 를 써야 하고 → 유료 플랜이 필요하다.
+여유로 서울 은 Streamlit 앱이므로 Docker SDK 를 써야 하고 → 유료 플랜이 필요하다.
 CPU Basic 의 16GB RAM 은 매력적이지만 **Space 자체를 만들 수 없으므로 무의미하다.**
 
 ### 비교
@@ -104,7 +104,7 @@ CPU Basic 의 16GB RAM 은 매력적이지만 **Space 자체를 만들 수 없�
 | GitHub 연동 | 네이티브 (push 시 자동 재배포) | 미러링 필요 |
 | AI 포트폴리오 브랜딩 | 보통 | 좋음 |
 | 디버깅 난이도 | 낮음 (웹 로그 확인) | 중간 |
-| MetroCalm 적합도 | **높음** | 낮음 |
+| 여유로 서울 적합도 | **높음** | 낮음 |
 
 ### 최종 선택: Streamlit Community Cloud
 
@@ -175,14 +175,14 @@ def _now_defaults():
 
 1. `.gitignore` 수정 → `git status` 로 의도한 마트만 추가 대상인지 확인
 2. `requirements.txt` / `requirements-dev.txt` 교체
-3. 타임존 수정 (`app/streamlit/metrocalm_app.py`, `station_routing.py` 동일본 유지 확인)
+3. 타임존 수정 (`app/streamlit/yeoyuro_seoul_app.py`, `station_routing.py` 동일본 유지 확인)
 4. `pytest tests/ -q` → 41 passed 확인
 5. 로컬 실행 검증 (§7)
 6. 마트 커밋 → push, 레포 크기 확인
 7. share.streamlit.io 에서 New app
-   - Repository: `FlightChamp/metrocalm`
+   - Repository: `FlightChamp/yeoyuro-seoul`
    - Branch: `main`
-   - Main file path: `app/streamlit/metrocalm_app.py`
+   - Main file path: `app/streamlit/yeoyuro_seoul_app.py`
    - Advanced settings → Python version: 3.12
    - Secrets: **불필요** (외부 API·인증 없음)
 8. 빌드 로그에서 설치 실패·FileNotFoundError 확인
@@ -211,7 +211,7 @@ def _now_defaults():
 
 ```
 pytest tests/ -q                          → __ passed
-streamlit run app/streamlit/metrocalm_app.py   (인자 없이)
+streamlit run app/streamlit/yeoyuro_seoul_app.py   (인자 없이)
 ```
 
 검증 OD (8건): 서울역→강남 / 상일동→강남 / 광나루→한양대 / 왕십리→한양대 /

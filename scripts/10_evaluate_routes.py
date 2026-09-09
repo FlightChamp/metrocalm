@@ -442,7 +442,7 @@ def make_scatter(cases, out_png, subtitle):
                label="alternative threshold (+%.0f%%p)" % MIN_CONGESTION_DROP_PP)
     ax.set_xlabel("Stretch Factor  (candidate time / fastest time)")
     ax.set_ylabel("Max congestion reduction vs fastest (%p)")
-    ax.set_title("MetroCalm route trade-off: time cost vs congestion gain\n" + subtitle,
+    ax.set_title("Yeoyuro Seoul route trade-off: time cost vs congestion gain\n" + subtitle,
                  fontsize=11)
     cb = fig.colorbar(sc, ax=ax)
     cb.set_label("transfer count")

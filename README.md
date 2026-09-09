@@ -1,14 +1,20 @@
-# MetroCalm
+# 여유로 서울 (Yeoyuro Seoul)
 
-> 서울 지하철 1~8호선의 과거 승하차·혼잡도·환승·이벤트 데이터를 결합해
-> **기대 혼잡 위험도**를 추정하고, 최단시간뿐 아니라 쾌적성·환승 피로도·이벤트 위험을
-> 함께 고려하는 **다목적 경로 추천 시스템**입니다.
+> 최단시간을 넘어, 최적의 쾌적함을 제안합니다.
 
-![python](https://img.shields.io/badge/python-3.11+-blue)
+서울 지하철 1~8호선 혼잡도 기반 쾌적 경로 추천 시스템입니다.
+과거 승하차·혼잡도·환승·이벤트 데이터를 결합해 기대 혼잡도, 환승 피로도,
+이벤트 위험, 평균 환승 대기시간을 함께 고려합니다.
+
+**Yeoyuro Seoul** is a congestion-aware, multi-objective subway routing system.
+Built on Streamlit, it estimates expected congestion from historical Seoul Metro
+data and recommends comfort-optimized alternative routes.
+
+![python](https://img.shields.io/badge/python-3.12-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-41%20passed-brightgreen)
+![tests](https://img.shields.io/badge/tests-99%20passed-brightgreen)
 
-![MetroCalm](docs/images/01_route_map.png)
+![여유로 서울](docs/images/01_route_map.png)
 
 <sub>클릭형 벡터 노선도(5120×2880)에서 출발·도착역을 고르면 추천 경로가 지도 위에 표시됩니다.</sub>
 
@@ -22,7 +28,7 @@
 - 환승이 힘든 역은 피하고 싶다
 - 행사 때문에 특정 역이 폭발적으로 붐비는 날을 피하고 싶다
 
-MetroCalm은 경로 추천을 최단경로 문제가 아니라
+여유로 서울은 경로 추천을 최단경로 문제가 아니라
 **시간 · 혼잡 · 환승 피로 · 이벤트 위험 · 착석 가능성**을 함께 고려하는
 multi-objective scoring 문제로 재정의합니다.
 
@@ -96,7 +102,7 @@ raw ─▶ staging ─▶ master ─▶ marts ─┬─▶ [Model A] 이벤트 s
 
 | 스크립트 | 역할 | 핵심 산출물 |
 |---|---|---|
-| `bootstrap_metrocalm.py` | 폴더·마스터 8종 생성 | `data/master/*` |
+| `bootstrap_yeoyuro_seoul.py` | 폴더·마스터 8종 생성 | `data/master/*` |
 | `01_build_ridership_mart.py` | 승하차 48개월 통합 | station_master 283행 |
 | `03_build_stg_congestion.py` | 혼잡도 11스냅샷 통합 | 스키마 3종 자동 대응 |
 | `04_build_congestion_mart.py` | 라벨·split·프로파일 | 715,065 셀 |
@@ -166,7 +172,7 @@ ablation 의 B→C 에서 승하차 흐름 피처가 R² 를 0.450 → 0.734 로
 ## 6. 데모
 
 ```bash
-streamlit run app/streamlit/metrocalm_app.py -- --root .
+streamlit run app/streamlit/yeoyuro_seoul_app.py -- --root .
 ```
 
 | 화면 | 내용 |
@@ -223,13 +229,13 @@ streamlit run app/streamlit/metrocalm_app.py -- --root .
 ## 7. 재현
 
 ```bash
-git clone https://github.com/FlightChamp/metrocalm.git
-cd metrocalm
+git clone https://github.com/FlightChamp/yeoyuro-seoul.git
+cd yeoyuro-seoul
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 # 원본 데이터를 data/raw/ 아래에 배치 (docs/DATA.md 참고)
-python bootstrap_metrocalm.py --root .
+python bootstrap_yeoyuro_seoul.py --root .
 python scripts/01_build_ridership_mart.py  --raw data/raw/ridership_monthly --root .
 python scripts/03_build_stg_congestion.py  --raw-dir data/raw/congestion_quarterly --out-root .
 python scripts/04_build_congestion_mart.py --root .
@@ -243,11 +249,11 @@ python scripts/08b_evaluate_congestion_model.py --root .
 python scripts/10_evaluate_routes.py       --root . --time 08:30
 python scripts/11_validate_schemas.py      --root . --strict
 python scripts/12_build_display_masters.py --root .
-python scripts/14_import_map_workbook.py   --root . --xlsx data/master/metrocalm_vector_map_coordinate_workbook.xlsx
+python scripts/14_import_map_workbook.py   --root . --xlsx data/master/yeoyuro_seoul_vector_map_coordinate_workbook.xlsx
 python scripts/15_build_headway_mart.py    --root . --src data/raw/headway
 
 pytest tests/ -v
-streamlit run app/streamlit/metrocalm_app.py -- --root .
+streamlit run app/streamlit/yeoyuro_seoul_app.py -- --root .
 ```
 
 `data/raw`, `data/marts`, `models`는 저장소에 없습니다. 위 순서대로 실행하면 재생성됩니다.

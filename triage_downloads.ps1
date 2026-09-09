@@ -1,7 +1,7 @@
-﻿# =====================================================================
+# =====================================================================
 #  triage_downloads.ps1 — Downloads 잔여 파일 정리
 #
-#  Downloads 의 MetroCalm 관련 파일을 3가지로 분류한다.
+#  Downloads 의 여유로 서울 관련 파일을 3가지로 분류한다.
 #    [중복]  프로젝트 파일과 내용이 같다        → 삭제
 #    [이동]  프로젝트에 없는 파일이다            → 지정 위치로 이동
 #    [확인]  프로젝트 파일과 내용이 다르다       → 사람이 판단
@@ -22,7 +22,7 @@ $ErrorActionPreference = "Stop"
 # ---- 파일명 → 프로젝트 내 목적지 -------------------------------------
 $Dest = @{
     # 루트
-    "bootstrap_metrocalm.py"           = "."
+    "bootstrap_yeoyuro_seoul.py"           = "."
     "setup_and_run.ps1"                = "."
     "setup_github.ps1"                 = "."
     "triage_downloads.ps1"             = "."
@@ -47,7 +47,7 @@ $Dest = @{
     "12_build_display_masters.py"      = "scripts"
     "14_import_map_workbook.py"        = "scripts"
     # 앱
-    "metrocalm_app.py"                 = "app\streamlit"
+    "yeoyuro_seoul_app.py"                 = "app\streamlit"
     # 테스트
     "test_station_routing.py"          = "tests"
     # 문서
@@ -59,7 +59,7 @@ $Dest = @{
     "congestion_audit_report.md"       = "reports\data_quality"
     "ridership_quality_report.md"      = "reports\data_quality"
     # 좌표 워크북
-    "metrocalm_vector_map_coordinate_workbook.xlsx" = "data\master"
+    "yeoyuro_seoul_vector_map_coordinate_workbook.xlsx" = "data\master"
 }
 
 # ---- 원본 데이터: 파일명 패턴으로 data/raw 하위에 매핑 ----------------
@@ -102,7 +102,7 @@ foreach ($f in $files) {
         ($RawPatterns | Where-Object { $base -like $_.Pattern } | Select-Object -First 1).Dest
     }
     if (-not $destDir) {
-        $result += [pscustomobject]@{ 분류="무관"; 파일=$f.Name; 목적지="-"; 비고="MetroCalm 관련 파일 아님" }
+        $result += [pscustomobject]@{ 분류="무관"; 파일=$f.Name; 목적지="-"; 비고="여유로 서울 관련 파일 아님" }
         continue
     }
 

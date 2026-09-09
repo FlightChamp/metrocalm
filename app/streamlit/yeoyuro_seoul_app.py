@@ -1,10 +1,10 @@
 """
-metrocalm_app.py — MetroCalm 쾌적 경로 추천
+yeoyuro_seoul_app.py — 여유로 서울 쾌적 경로 추천
 ==========================================
 
 실행
 ----
-    streamlit run app/streamlit/metrocalm_app.py -- --root .
+    streamlit run app/streamlit/yeoyuro_seoul_app.py -- --root .
 
 설계 원칙
 ---------
@@ -54,7 +54,7 @@ for extra in (ROOT, ROOT / "scripts", ROOT / "app" / "streamlit"):
     if str(extra) not in sys.path:
         sys.path.insert(0, str(extra))
 
-st.set_page_config(page_title="MetroCalm", page_icon="🚇", layout="wide",
+st.set_page_config(page_title="여유로 서울", page_icon="🚇", layout="wide",
                    initial_sidebar_state="expanded")
 
 # 브랜드 색
@@ -1560,7 +1560,7 @@ multi-objective scoring 문제로 재정의했습니다. 혼잡도(%)와 시간(
         st.code("perceived_time = travel_time × (1 + 0.5 × max(0, 혼잡도 − 80) / 100)")
         st.markdown("""
 ##### 사용자 UI 와 내부 그래프의 분리
-MetroCalm 은 사용자에게 **역 단위 입력**을 제공하지만, 내부 그래프와 혼잡도 계산은
+여유로 서울 은 사용자에게 **역 단위 입력**을 제공하지만, 내부 그래프와 혼잡도 계산은
 **호선별 station_uid 단위**로 유지합니다. 환승역에서 어떤 노선을 처음 탈지는 사용자가
 고정하지 않는 한 알고리즘이 후보로 비교하며, **최초 승차 노선 선택은 환승으로
 계산하지 않습니다.**
@@ -1686,7 +1686,7 @@ MetroCalm 은 사용자에게 **역 단위 입력**을 제공하지만, 내부 �
 
 # --------------------------------------------------------------------------
 def main():
-    st.sidebar.title("🚇 MetroCalm")
+    st.sidebar.title("🚇 여유로 서울")
     st.sidebar.caption("서울 지하철 혼잡도 기반  \n쾌적 경로 추천 시스템")
     if not st.session_state.get("menu"):
         st.session_state["menu"] = MENUS[0]

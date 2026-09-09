@@ -1,5 +1,5 @@
-﻿# =====================================================================
-#  MetroCalm - setup_and_run.ps1
+# =====================================================================
+#  여유로 서울 - setup_and_run.ps1
 #  프로젝트 폴더 생성 -> 스크립트 배치 -> 원본 데이터 분류 -> 파이프라인 실행
 #
 #  사용법 (PowerShell):
@@ -44,7 +44,7 @@ if (-not $py) { throw "python 을 찾을 수 없습니다. conda 환경을 활�
 Ok "python: $($py.Source)"
 
 $needed = @(
-    "bootstrap_metrocalm.py",
+    "bootstrap_yeoyuro_seoul.py",
     "01_build_ridership_mart.py",
     "03_build_stg_congestion.py",
     "04_build_congestion_mart.py"
@@ -61,8 +61,8 @@ Ok "스크립트 4개 확인 ($ScriptSrc)"
 # ---------------------------------------------------------------------
 Step "1. bootstrap 실행 (폴더 트리 + master 8종)"
 
-Copy-Item (Join-Path $ScriptSrc "bootstrap_metrocalm.py") $ProjDir -Force
-python bootstrap_metrocalm.py --root .
+Copy-Item (Join-Path $ScriptSrc "bootstrap_yeoyuro_seoul.py") $ProjDir -Force
+python bootstrap_yeoyuro_seoul.py --root .
 if ($LASTEXITCODE -ne 0) { throw "bootstrap 실패" }
 
 # ---------------------------------------------------------------------

@@ -1,7 +1,7 @@
 """
 14_import_map_workbook.py
 =========================
-`metrocalm_vector_map_coordinate_workbook.xlsx` 를 프로젝트 마스터로 가져오고 검증한다.
+`yeoyuro_seoul_vector_map_coordinate_workbook.xlsx` 를 프로젝트 마스터로 가져오고 검증한다.
 
 이 워크북이 노선도 좌표의 **source of truth** 다. 좌표가 어색해 보여도 자동 레이아웃으로
 대체하지 않는다. 문제가 있으면 validation warning 으로 남기고 최소 보정만 한다.
@@ -257,7 +257,7 @@ class MapWorkbookImporter:
         ax.set_ylim(CANVAS_H, 0)          # 이미지 좌표계 (y 아래로 증가)
         ax.set_aspect("equal")
         ax.axis("off")
-        ax.set_title("MetroCalm vector subway map — workbook 5120x2880", fontsize=12)
+        ax.set_title("Yeoyuro Seoul vector subway map — workbook 5120x2880", fontsize=12)
         fig.tight_layout()
         self.figs.mkdir(parents=True, exist_ok=True)
         p = self.figs / "vector_map_preview.png"
@@ -310,15 +310,26 @@ class MapWorkbookImporter:
         return 1 if n_fail else 0
 
 
+# 노선도 좌표 워크북 파일명. 프로젝트 리브랜딩(MetroCalm -> 여유로 서울) 이전
+# 이름으로 저장된 워크북도 계속 읽을 수 있도록 legacy 이름을 함께 둔다.
+WORKBOOK_NAME = "yeoyuro_seoul_vector_map_coordinate_workbook.xlsx"
+WORKBOOK_LEGACY = "metrocalm_vector_map_coordinate_workbook.xlsx"
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default=".")
-    ap.add_argument("--xlsx", default="metrocalm_vector_map_coordinate_workbook.xlsx")
+    ap.add_argument("--xlsx", default=WORKBOOK_NAME)
     ap.add_argument("--preview", action="store_true")
     args = ap.parse_args(argv)
     x = Path(args.xlsx)
     if not x.exists():
-        cand = list(Path(args.root).rglob("metrocalm_vector_map_coordinate_workbook.xlsx"))
+        # 신규 파일명을 먼저 찾고, 없으면 리브랜딩 이전 파일명으로 되짚는다.
+        cand = list(Path(args.root).rglob(WORKBOOK_NAME))
+        if not cand:
+            cand = list(Path(args.root).rglob(WORKBOOK_LEGACY))
+            if cand:
+                print("[warning] 이전 파일명의 워크북을 사용합니다: %s" % cand[0].name)
         if not cand:
             print("워크북 xlsx 를 찾을 수 없습니다: %s" % args.xlsx)
             return 2
