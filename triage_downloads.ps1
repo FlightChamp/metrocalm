@@ -8,7 +8,7 @@
 #    [보호]  옮기면 안 되는 파일이다             → 손대지 않음
 #
 #  사용법
-#    cd C:\Programming\MyProject\metro_calm_project
+#    cd C:\Programming\MyProject\yeoyuro_seoul_project
 #    .\triage_downloads.ps1            # 분류만 (dry-run)
 #    .\triage_downloads.ps1 -Apply     # 실제 삭제/이동 수행
 # =====================================================================

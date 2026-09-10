@@ -9,7 +9,7 @@
 #    5) origin 연결 및 push 안내
 #
 #  사용법
-#    cd C:\Programming\MyProject\metro_calm_project
+#    cd C:\Programming\MyProject\yeoyuro_seoul_project
 #    .\setup_github.ps1                 # 점검만 (dry-run)
 #    .\setup_github.ps1 -Commit         # 실제 커밋 생성
 #    .\setup_github.ps1 -Commit -Push   # 커밋 후 push

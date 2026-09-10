@@ -1,6 +1,6 @@
 ====================================================================
  여유로 서울 bootstrap report
- root : C:\Programming\MyProject\metro_calm_project
+ root : C:\Programming\MyProject\yeoyuro_seoul_project
  time : 2026-09-03 20:34:12
 ====================================================================
 [생성된 폴더]  0 개

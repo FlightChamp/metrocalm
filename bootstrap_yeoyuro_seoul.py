@@ -21,7 +21,7 @@ bootstrap_yeoyuro_seoul.py
 사용법
 ------
     python bootstrap_yeoyuro_seoul.py --root .
-    python bootstrap_yeoyuro_seoul.py --root C:\\projects\\metro_calm_project --force
+    python bootstrap_yeoyuro_seoul.py --root C:\\projects\\yeoyuro_seoul_project --force
 
 주의
 ----

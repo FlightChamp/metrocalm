@@ -3,11 +3,11 @@
 #  프로젝트 폴더 생성 -> 스크립트 배치 -> 원본 데이터 분류 -> 파이프라인 실행
 #
 #  사용법 (PowerShell):
-#     cd C:\Programming\MyProject\metro_calm_project
+#     cd C:\Programming\MyProject\yeoyuro_seoul_project
 #     .\setup_and_run.ps1 -RawDir "원본데이터가_있는_폴더"
 #
 #  예시:
-#     .\setup_and_run.ps1 -RawDir "C:\Programming\MyProject\metro_calm_project 자료실"
+#     .\setup_and_run.ps1 -RawDir "C:\Programming\MyProject\yeoyuro_seoul_project 자료실"
 #
 #  -RawDir 은 하위 폴더까지 재귀 탐색한다. 종류별로 나눠져 있어도 최상위 폴더만 주면 된다.
 #
@@ -16,7 +16,7 @@
 # =====================================================================
 
 param(
-    [string]$ProjDir = "C:\Programming\MyProject\metro_calm_project",
+    [string]$ProjDir = "C:\Programming\MyProject\yeoyuro_seoul_project",
     [string]$ScriptSrc = "$env:USERPROFILE\Downloads",
     [string]$RawDir = "",
     [switch]$SkipCopy      # 원본 데이터를 이미 배치했다면 지정
