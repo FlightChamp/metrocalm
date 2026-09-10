@@ -12,7 +12,7 @@ data and recommends comfort-optimized alternative routes.
 
 ![python](https://img.shields.io/badge/python-3.12-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-99%20passed-brightgreen)
+[![tests](https://github.com/FlightChamp/yeoyuro-seoul/actions/workflows/tests.yml/badge.svg)](https://github.com/FlightChamp/yeoyuro-seoul/actions/workflows/tests.yml)
 
 ![여유로 서울](docs/images/02_route_card.png)
 
