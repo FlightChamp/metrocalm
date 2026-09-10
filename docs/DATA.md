@@ -15,9 +15,26 @@
 | `reports/**/*.md`, 요약 `.csv`, `figures/*.png` | ✅ | 실행 결과 검증 증거 |
 | `scripts/`, `app/`, `tests/`, `docs/` | ✅ | 코드와 문서 |
 | `data/raw/**` | ❌ | 원본 공공데이터(약 143MB). 재배포 조건 미확인 |
-| `data/staging/**`, `data/interim/**`, `data/marts/**` | ❌ | 스크립트로 재생성(약 103MB) |
+| `data/marts` 중 앱 런타임 mart | ✅ | 배포 앱이 읽는 경량 산출물 15개(합계 약 0.9MB). 아래 참고 |
+| `data/staging/**`, `data/interim/**` | ❌ | 중간 산출물. 스크립트로 재생성 |
+| `data/marts` 중 학습·대용량 mart | ❌ | `congestion_training_mart`(706,678행), 승하차 mart(15,957,680행) 등. 앱이 읽지 않음 |
 | `models/**` | ❌ | 재학습 가능(약 33MB). 채택된 것은 baseline lookup 이다 |
 | `reports/route/route_eval_cases*.csv` | ❌ | 행 수가 많은 원시 결과. 요약 CSV 와 리포트는 포함 |
+
+### 저장소에 포함한 런타임 mart
+
+배포 앱이 실행 중에 읽는 파일만 포함합니다. 파이프라인을 돌리지 않아도 앱이 동작합니다.
+
+```
+route_edge_mart              transfer_edge_mart           congestion_edge_lookup
+congestion_station_profile   transfer_tip_mart            event_did_mart
+event_spike_mart             headway_station_30min        headway_line_30min
+route_evaluation_mart_{0830,1800,20250927_1800}
+route_evaluation_summary_{0830,1800,20250927_1800}
+```
+
+`models/` 는 포함하지 않습니다. 사전 등록한 판정에 따라 baseline 을 서비스에 쓰므로
+앱 런타임에 모델 파일이 필요 없습니다.
 
 `data/master` 를 포함한 것이 이 저장소의 핵심 판단입니다. 마스터는 "데이터"가 아니라
 **프로젝트가 무엇을 대상으로 하는지에 대한 정의**이므로 코드와 함께 버전 관리해야 합니다.
@@ -98,7 +115,7 @@ Windows 사용자는 `setup_and_run.ps1 -RawDir "<원본 폴더>"` 로 분류·�
 | `10` | 요청 52건 / 제약 위반 0 / calm 대안 3-13 |
 | `11` | 테이블 PASS 7 / 교차검증 PASS 10 |
 | `14` | PASS 10 / WARN 2 |
-| `pytest` | 15 passed |
+| `pytest` | 99 passed (경로 41 · 정차 18 · 방면 27 · 표시 정합 13) |
 
 ---
 

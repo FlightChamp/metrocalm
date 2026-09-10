@@ -72,7 +72,9 @@ edge_cost      = perceived_time + transfer_penalty + event_risk
 | 지하철혼잡도정보 | 11 | long 715,299행 (스키마 3종 드리프트) |
 | 환승역 환승인원 | 9 | 각 73행 |
 | 수도권 환승 상세(호차/문) | 1 | 892행 중 범위 내 375행 |
-| 역간거리·소요시간 | 3 | 279행 |
+| 역간거리·소요시간 | 3 | 279행 (서울교통공사 2 · 국가철도공단 1) |
+| 열차운행현황 | 1 | 호선별 영업거리·소요시간·표정속도. 정차시간 교차검증에 사용 |
+| 1~8호선 역별 일별 승객유형별 수송인원 | 1 | 576,714행. 보조 검증용 |
 
 원본은 재배포 제약으로 저장소에 포함하지 않습니다. 재현 방법은
 [`docs/DATA.md`](docs/DATA.md)를 참고하세요.
@@ -134,7 +136,19 @@ raw ─▶ staging ─▶ master ─▶ marts ─┬─▶ [Model A] 이벤트 s
 | 환승 호차/문이 진행 방향과 무관하게 선택됨 | 경로의 앞뒤 역으로 방면을 좁혀 선택 |
 
 U턴은 **배차가 긴 낮 시간대에만** 나타나 08:30 검증에서는 잡히지 않았습니다.
-그래서 regression test를 5개 시간대로 돌립니다(`tests/`, 41 tests).
+그래서 regression test를 5개 시간대로 돌립니다(경로 탐색 regression 41건).
+
+검증 규모는 계층적으로 나뉩니다.
+
+| 계층 | 대상 | 결과 |
+|---|---|---|
+| 전체 pytest | `tests/` 4개 파일 | **99 passed** |
+| ├ 경로 탐색 regression | `test_station_routing.py` | 41 |
+| ├ 중간역 정차시간 | `test_dwell_time.py` | 18 |
+| ├ 환승 방면 표기 | `test_transfer_direction.py` | 27 |
+| └ 표시값 정합성 | `test_timeline_consistency.py` | 13 |
+| 그래프 구조 | `06b_smoke_test_graph.py` | 9/9 PASS |
+| 스키마·교차검증 | `11_validate_schemas.py` | PASS 17 |
 
 ## 5. 평가 체계
 
@@ -204,7 +218,7 @@ streamlit run app/streamlit/yeoyuro_seoul_app.py -- --root .
 ![대안 없음](docs/images/04_no_alternative.png)
 
 유의미한 쾌적 대안이 없을 때는 우회 경로를 지어내지 않고
-**같은 경로에서 더 덜 붐비는 출발 시간**을 제안합니다.
+**같은 경로에서 더 여유로운 출발 시간**을 제안합니다.
 후보 경로 비교표에서 왜 대안이 탈락했는지 직접 확인할 수 있습니다.
 
 ### 노선별 혼잡 단면
@@ -256,7 +270,13 @@ pytest tests/ -v
 streamlit run app/streamlit/yeoyuro_seoul_app.py -- --root .
 ```
 
-`data/raw`, `data/marts`, `models`는 저장소에 없습니다. 위 순서대로 실행하면 재생성됩니다.
+`data/raw`, `data/staging`, `data/interim`, 학습용 대용량 mart, `models`는 저장소에 없습니다.
+위 순서대로 실행하면 재생성됩니다.
+
+`data/marts` 에는 **배포 앱이 런타임에 읽는 경량 mart 만** 포함돼 있습니다
+(`route_edge_mart`, `transfer_edge_mart`, `congestion_edge_lookup`, `congestion_station_profile`,
+`transfer_tip_mart`, `event_did_mart`, `event_spike_mart`, `headway_*`, `route_evaluation_*` — 합계 약 0.9MB).
+앱 실행만 할 거라면 파이프라인을 돌리지 않아도 됩니다.
 
 ---
 
@@ -269,7 +289,7 @@ streamlit run app/streamlit/yeoyuro_seoul_app.py -- --root .
 6호선 응암~신내        7호선 장암~온수        8호선 암사역사공원~모란
 ```
 
-9호선·신분당선·공항철도 등 서울교통공사 관할 밖 노선은 그래프와 환승 집계에서 제외합니다.
+9호선·신분당선·공항철도 등 v1 데이터·그래프 구축 범위 밖 노선은 그래프와 환승 집계에서 제외합니다.
 강남역은 2호선·신분당선 환승역이지만 신분당선이 범위 밖이라 환승역으로 집계하지 않습니다.
 
 ---

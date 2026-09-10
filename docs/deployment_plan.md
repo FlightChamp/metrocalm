@@ -1,8 +1,8 @@
 # 여유로 서울 (Yeoyuro Seoul) v1 배포 계획
 
-> 대상: 여유로 서울 v1 포트폴리오 데모 데모 배포
+> 대상: 여유로 서울 v1 포트폴리오 데모 배포
 > 원칙: 기능·알고리즘·모델을 바꾸지 않고, 로컬과 **동일한** 동작을 외부에 공개한다.
-> 상태: 계획 확정 / 실행 대기 (§6, §7 은 실행 후 값을 채운다)
+> 상태: 로컬 검증 완료 / 배포 대기. Live Demo URL 은 배포 후 README 와 함께 갱신한다.
 
 ---
 
@@ -16,7 +16,7 @@ GitHub 레포(`FlightChamp/yeoyuro-seoul`)를 클론해 확인한 값이다.
 | 추적 파일 | 113개 |
 | 민감 파일 추적 | 없음 (`.env`/`secret`/`credential`/`key`/`pem`/`token` 검색 0건) |
 | 절대경로 하드코딩 | 없음 (`bootstrap_yeoyuro_seoul.py` docstring 예시 1건, 실행 무관) |
-| 최대 추적 파일 | `docs/images/07_model_report.png` 252KB |
+| 최대 추적 파일 | `docs/images/08_model_report.png` |
 
 ### 경로 처리
 
@@ -176,7 +176,7 @@ def _now_defaults():
 1. `.gitignore` 수정 → `git status` 로 의도한 마트만 추가 대상인지 확인
 2. `requirements.txt` / `requirements-dev.txt` 교체
 3. 타임존 수정 (`app/streamlit/yeoyuro_seoul_app.py`, `station_routing.py` 동일본 유지 확인)
-4. `pytest tests/ -q` → 41 passed 확인
+4. `pytest tests/ -q` → 99 passed 확인
 5. 로컬 실행 검증 (§7)
 6. 마트 커밋 → push, 레포 크기 확인
 7. share.streamlit.io 에서 New app
@@ -193,24 +193,16 @@ def _now_defaults():
 
 ## 6. 데이터 크기 점검 결과
 
-> 실행 후 채운다.
-
-| 파일 | MB |
-|---|---|
-| | |
-
-- 마트 합계: __ MB
-- 커밋 후 레포 총 크기: __ MB
-- 50MB 초과 파일: __
+- 마트 합계: **0.85MB** (15개 파일. 최대 `congestion_edge_lookup.parquet` 279KB)
+- 커밋 후 레포 총 크기: 약 6.4MB
+- 50MB 초과 파일: 없음
 
 ---
 
 ## 7. 로컬 검증 결과
 
-> 실행 후 채운다.
-
 ```
-pytest tests/ -q                          → __ passed
+pytest tests/ -q                          → 99 passed
 streamlit run app/streamlit/yeoyuro_seoul_app.py   (인자 없이)
 ```
 

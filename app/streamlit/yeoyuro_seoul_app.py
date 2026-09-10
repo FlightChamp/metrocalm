@@ -1035,7 +1035,7 @@ def _render_route_result(result, fallback, o, d_):
                    % (alt["time_loss_vs_fastest"], alt["comfort_gain_vs_fastest"]), "good")
     else:
         st.warning("현재 최단 경로 외에 **유의미한 쾌적 대안 경로가 없습니다.** "
-                   "대신, 같은 경로에서 더 덜 붐비는 출발 시간을 추천합니다.")
+                   "대신, 같은 경로에서 더 여유로운 출발 시간을 추천합니다.")
         ta = result.get("time_alternative")
         if ta:
             st.info("대신 **%s 출발**을 권장합니다. 같은 경로의 최대 기대 혼잡도가 "
