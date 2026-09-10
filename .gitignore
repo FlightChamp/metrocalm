@@ -92,3 +92,6 @@ scratch/
 !data/marts/headway_line_30min.*
 !data/marts/route_evaluation_mart_*.*
 !data/marts/route_evaluation_summary_*.*
+
+# Excel 임시 잠금 파일 (워크북을 열면 생성됨)
+~$*.xlsx
